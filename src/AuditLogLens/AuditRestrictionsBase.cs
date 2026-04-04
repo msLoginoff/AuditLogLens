@@ -1,4 +1,6 @@
 using AuditLog.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace AuditLog;
 
@@ -23,6 +25,17 @@ public abstract class AuditRestrictionsBase : IAuditRestrictions
     public virtual IReadOnlyCollection<string> GetAllowedTables()
     {
         return _rulesDictionary.Value.Keys.ToList();
+    }
+
+    public virtual bool IsAllowedEntry(EntityEntry entry)
+    {
+        if (entry.State is EntityState.Detached or EntityState.Unchanged)
+        {
+            return false;
+        }
+
+        var tableName = entry.Metadata.ClrType.Name;
+        return IsAllowedTable(tableName);
     }
 
     public virtual bool IsAllowedTable(string tableName)

@@ -1,8 +1,12 @@
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+
 namespace AuditLog.Abstractions;
 
 public interface IAuditRestrictions
 {
     IReadOnlyCollection<string> GetAllowedTables();
+
+    bool IsAllowedEntry(EntityEntry entry);
 
     bool IsAllowedTable(string tableName);
 

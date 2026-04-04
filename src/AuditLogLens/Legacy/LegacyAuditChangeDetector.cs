@@ -6,6 +6,13 @@ namespace AuditLog.Legacy;
 
 public sealed class LegacyAuditChangeDetector : IAuditChangeDetector
 {
+    private readonly IAuditRestrictions _auditRestrictions;
+
+    public LegacyAuditChangeDetector(IAuditRestrictions auditRestrictions)
+    {
+        _auditRestrictions = auditRestrictions;
+    }
+
     public AuditSaveContext DetectPreSaveChanges(DbContext dbContext)
     {
         ArgumentNullException.ThrowIfNull(dbContext);
@@ -22,6 +29,11 @@ public sealed class LegacyAuditChangeDetector : IAuditChangeDetector
             }
 
             var auditChange = CreateAuditChange(entry, isAfterSave: false);
+
+            if (auditChange is null)
+            {
+                continue;
+            }
 
             if (HasTemporaryKey(entry))
             {
@@ -63,33 +75,26 @@ public sealed class LegacyAuditChangeDetector : IAuditChangeDetector
         return result;
     }
 
-    private static bool ShouldProcessEntry(EntityEntry entry)
+    private bool ShouldProcessEntry(EntityEntry entry)
     {
-        if (entry.State is EntityState.Detached or EntityState.Unchanged)
-        {
-            return false;
-        }
-
-        var entityType = entry.Entity.GetType();
-
-        //todo перенести точные условия из UnicornDbContext
-        if (entityType.Name is "AuditRecord" or "ExternalAuditRecord")
-        {
-            return false;
-        }
-
-        return true;
+        return _auditRestrictions.IsAllowedEntry(entry);
     }
 
-    private static AuditChange CreateAuditChange(EntityEntry entry, bool isAfterSave)
+    private AuditChange? CreateAuditChange(EntityEntry entry, bool isAfterSave)
     {
+        var tableName = GetAuditTableName(entry);
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            return null;
+        }
+
         var auditChange = new AuditChange
         {
             Entry = entry,
-            EntityType = entry.Entity.GetType(),
+            EntityType = entry.Metadata.ClrType,
             EntityId = TryGetPrimaryKeyValue(entry),
             State = entry.State.ToString(),
-            TableName = entry.Entity.GetType().Name,
+            TableName = tableName,
             IsAfterSavePhase = isAfterSave
         };
 
@@ -101,6 +106,11 @@ public sealed class LegacyAuditChangeDetector : IAuditChangeDetector
             }
 
             var propertyName = property.Metadata.Name;
+
+            if (!_auditRestrictions.IsAllowedProperty(tableName, propertyName))
+            {
+                continue;
+            }
 
             switch (entry.State)
             {
@@ -124,7 +134,17 @@ public sealed class LegacyAuditChangeDetector : IAuditChangeDetector
             }
         }
 
+        if (!HasVisibleChanges(auditChange) && !HasTemporaryKey(entry))
+        {
+            return null;
+        }
+
         return auditChange;
+    }
+
+    private static bool HasVisibleChanges(AuditChange change)
+    {
+        return change.OldValues.Count > 0 || change.NewValues.Count > 0;
     }
 
     private static bool HasTemporaryKey(EntityEntry entry)
@@ -152,5 +172,10 @@ public sealed class LegacyAuditChangeDetector : IAuditChangeDetector
         }
 
         return values;
+    }
+
+    private static string? GetAuditTableName(EntityEntry entry)
+    {
+        return entry.Metadata.ClrType.Name;
     }
 }
