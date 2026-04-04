@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace AuditLog.Legacy;
 
-public sealed class LegacyAuditChangeDetector : IAuditChangeDetector
+public sealed class EfAuditChangeDetector : IAuditChangeDetector
 {
     private readonly IAuditRestrictions _auditRestrictions;
 
-    public LegacyAuditChangeDetector(IAuditRestrictions auditRestrictions)
+    public EfAuditChangeDetector(IAuditRestrictions auditRestrictions)
     {
         _auditRestrictions = auditRestrictions;
     }

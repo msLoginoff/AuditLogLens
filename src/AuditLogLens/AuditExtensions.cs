@@ -10,7 +10,7 @@ public static class AuditExtensions
 {
     public static IServiceCollection AddAuditInfrastructure(this IServiceCollection services)
     {
-        services.AddScoped<IAuditChangeDetector, LegacyAuditChangeDetector>();
+        services.AddScoped<IAuditChangeDetector, EfAuditChangeDetector>();
         services.AddScoped<IAuditEnricher, LegacyAuditEnricher>();
         services.AddScoped<IAuditWriter, LegacyEfAuditWriter>();
         services.AddScoped<AuditSaveChangesInterceptor>();
