@@ -21,13 +21,8 @@ public sealed class EfAuditChangeDetector : IAuditChangeDetector
 
         var saveContext = new AuditSaveContext();
 
-        foreach (var entry in dbContext.ChangeTracker.Entries().ToList())
+        foreach (var entry in dbContext.ChangeTracker.Entries().Where(ShouldProcessEntry).ToList())
         {
-            if (!ShouldProcessEntry(entry))
-            {
-                continue;
-            }
-
             var auditChange = CreateAuditChange(entry, isAfterSave: false);
 
             if (auditChange is null)
