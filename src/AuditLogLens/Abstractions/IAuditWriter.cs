@@ -5,7 +5,7 @@ namespace AuditLog.Abstractions;
 public interface IAuditWriter
 {
     Task WriteAsync(
-        List<AuditChange> changes,
+        IReadOnlyList<AuditChange> changes,
         DbContext dbContext,
         CancellationToken cancellationToken = default);
 }

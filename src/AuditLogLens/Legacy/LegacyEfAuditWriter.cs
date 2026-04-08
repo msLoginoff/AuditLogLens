@@ -6,7 +6,7 @@ namespace AuditLog.Legacy;
 public sealed class LegacyEfAuditWriter : IAuditWriter
 {
     public Task WriteAsync(
-        List<AuditChange> changes,
+        IReadOnlyList<AuditChange> changes,
         DbContext dbContext,
         CancellationToken cancellationToken = default)
     {
