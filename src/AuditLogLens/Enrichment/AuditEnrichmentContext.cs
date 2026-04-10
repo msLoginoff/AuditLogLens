@@ -27,11 +27,6 @@ public sealed class AuditEnrichmentContext
 
     public DbContext DbContext { get; }
 
-    public IEnumerable<AuditChange> GetChanges()
-    {
-        return Changes;
-    }
-
     public IEnumerable<AuditChange> GetChangesOfType(Type entityType)
     {
         ArgumentNullException.ThrowIfNull(entityType);
