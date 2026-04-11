@@ -123,27 +123,30 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
     {
         var loadRequests = BuildLoadRequests(plan, changes);
 
-        foreach (var group in loadRequests.GroupBy(x => x.EntityType))
+        foreach (var group in loadRequests.GroupBy(x => new { x.EntityType, x.PropertyName }))
         {
-            var entityType = group.Key;
+            var entityType = group.Key.EntityType;
 
             if (context.GetLoadedEntities(entityType).Count > 0)
             {
                 continue;
             }
 
-            var loadedEntities = new List<object>();
+            var mergedValues = group
+                .SelectMany(x => x.Values)
+                .Distinct()
+                .ToList();
 
-            foreach (var request in group)
+            if (mergedValues.Count == 0)
             {
-                var entities = LoadEntitiesByPropertyValues(
-                    context.DbContext,
-                    request.EntityType,
-                    request.PropertyName,
-                    request.Values);
-
-                loadedEntities.AddRange(entities);
+                continue;
             }
+
+            var loadedEntities = LoadEntitiesByPropertyValues(
+                context.DbContext,
+                entityType,
+                group.Key.PropertyName,
+                mergedValues);
 
             context.SetLoadedEntities(
                 entityType,
@@ -164,7 +167,11 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
                 case ReferenceRule referenceRule:
                 {
                     var values = changes
-                        .Select(referenceRule.ForeignKeySelector)
+                        .SelectMany(change =>
+                        {
+                            var (oldFk, newFk) = GetReferenceForeignKeys(change, referenceRule.ForeignKeyPropertyName);
+                            return new[] { oldFk, newFk };
+                        })
                         .Where(x => x is not null)
                         .Cast<object>()
                         .Distinct()
@@ -343,23 +350,89 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
 
         foreach (var change in changes)
         {
-            var fk = rule.ForeignKeySelector(change);
-            if (fk is null)
+            var (oldFk, newFk) = GetReferenceForeignKeys(change, rule.ForeignKeyPropertyName);
+
+            if (oldFk is not null)
             {
-                continue;
+                var oldTarget = loadedEntities.FirstOrDefault(x =>
+                    Equals(GetPropertyValue(x, rule.TargetKeyPropertyName), oldFk));
+
+                if (oldTarget is not null)
+                {
+                    var bag = context.GetBagForChange(change);
+                    bag.SetOld(rule.FieldName, rule.ValueSelector(oldTarget));
+                }
             }
 
-            var target = loadedEntities.FirstOrDefault(x =>
-                Equals(rule.TargetKeySelector(x), fk));
-
-            if (target is null)
+            if (newFk is not null)
             {
-                continue;
-            }
+                var newTarget = loadedEntities.FirstOrDefault(x =>
+                    Equals(GetPropertyValue(x, rule.TargetKeyPropertyName), newFk));
 
-            var bag = context.GetBagForChange(change);
-            rule.Map(change, target, bag);
+                if (newTarget is not null)
+                {
+                    var bag = context.GetBagForChange(change);
+                    bag.SetNew(rule.FieldName, rule.ValueSelector(newTarget));
+                }
+            }
         }
+    }
+
+    private static object? GetPropertyValue(object entity, string propertyName)
+    {
+        var property = entity.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)
+                       ?? throw new InvalidOperationException(
+                           $"Property '{propertyName}' was not found on type {entity.GetType().FullName}.");
+
+        return property.GetValue(entity);
+    }
+
+    private static (object? oldFk, object? newFk) GetReferenceForeignKeys(
+        AuditChange change,
+        string foreignKeyPropertyName)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        ArgumentException.ThrowIfNullOrWhiteSpace(foreignKeyPropertyName);
+
+        var entry = change.Entry;
+        var currentFk = entry?.Property(foreignKeyPropertyName).CurrentValue;
+
+        var oldAuditValueExists = change.OldValues.TryGetValue(foreignKeyPropertyName, out var oldAuditFk);
+        var newAuditValueExists = change.NewValues.TryGetValue(foreignKeyPropertyName, out var newAuditFk);
+
+        return change.State switch
+        {
+            nameof(EntityState.Added) => (null, newAuditValueExists ? newAuditFk : currentFk),
+
+            nameof(EntityState.Deleted) => (oldAuditValueExists ? oldAuditFk : currentFk, null),
+
+            nameof(EntityState.Modified) => ResolveModifiedForeignKeys(
+                oldAuditValueExists,
+                oldAuditFk,
+                newAuditValueExists,
+                newAuditFk,
+                currentFk),
+
+            _ => (null, currentFk)
+        };
+    }
+
+    private static (object? oldFk, object? newFk) ResolveModifiedForeignKeys(
+        bool oldAuditValueExists,
+        object? oldAuditFk,
+        bool newAuditValueExists,
+        object? newAuditFk,
+        object? currentFk)
+    {
+        if (oldAuditValueExists || newAuditValueExists)
+        {
+            return (
+                oldAuditValueExists ? oldAuditFk : currentFk,
+                newAuditValueExists ? newAuditFk : currentFk
+            );
+        }
+
+        return (currentFk, currentFk);
     }
 
     private static void ApplyReverseReferenceRule(
@@ -400,7 +473,7 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         {
             var value = rule.ValueFactory(change);
             var bag = context.GetBagForChange(change);
-            bag.Set(rule.FieldName, value);
+            bag.SetNew(rule.FieldName, value);
         }
     }
 
@@ -410,7 +483,12 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         {
             var bag = context.GetBagForChange(change);
 
-            foreach (var pair in bag.Values)
+            foreach (var pair in bag.OldValues)
+            {
+                change.OldValues[pair.Key] = pair.Value;
+            }
+
+            foreach (var pair in bag.NewValues)
             {
                 change.NewValues[pair.Key] = pair.Value;
             }

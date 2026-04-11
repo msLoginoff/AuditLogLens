@@ -2,23 +2,37 @@ namespace AuditLog.Enrichment;
 
 public sealed class AuditEnrichmentBag
 {
-    private readonly Dictionary<string, object?> _values = new();
+    private readonly Dictionary<string, object?> _oldValues = new();
+    private readonly Dictionary<string, object?> _newValues = new();
 
-    public IReadOnlyDictionary<string, object?> Values => _values;
+    public IReadOnlyDictionary<string, object?> OldValues => _oldValues;
 
-    public void Set(string key, object? value)
+    public IReadOnlyDictionary<string, object?> NewValues => _newValues;
+
+    public void SetOld(string key, object? value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        _values[key] = value;
+        _oldValues[key] = value;
     }
 
-    public bool TryGetValue(string key, out object? value)
+    public void SetNew(string key, object? value)
     {
-        return _values.TryGetValue(key, out value);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        _newValues[key] = value;
     }
 
-    public bool HasValues()
+    public bool TryGetOldValue(string key, out object? value)
     {
-        return _values.Count > 0;
+        return _oldValues.TryGetValue(key, out value);
+    }
+
+    public bool TryGetNewValue(string key, out object? value)
+    {
+        return _newValues.TryGetValue(key, out value);
+    }
+
+    public bool HasAnyValues()
+    {
+        return _oldValues.Count > 0 || _newValues.Count > 0;
     }
 }
