@@ -19,6 +19,19 @@ public sealed class AuditEnrichmentPlanBuilder : IAuditEnrichmentPlanBuilder
         return this;
     }
 
+    internal AuditEnrichmentPlanBuilder Merge(AuditEnrichmentPlan plan)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+
+        foreach (var rule in plan.Rules)
+            _rules.Add(rule);
+
+        foreach (var step in plan.CustomSteps)
+            _customSteps.Add(step);
+
+        return this;
+    }
+
     internal AuditEnrichmentPlan Build()
     {
         return new AuditEnrichmentPlan(

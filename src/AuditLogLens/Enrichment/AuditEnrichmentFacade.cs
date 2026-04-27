@@ -38,24 +38,24 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         var context = new AuditEnrichmentContext(changes, dbContext);
         var entityTypes = changes.Select(x => x.EntityType).Distinct().ToList();
 
+        // Phase 1: load data + apply rules per entity type
         foreach (var entityType in entityTypes)
         {
             var plan = BuildCombinedPlan(entityType);
-            ApplyPlan(entityType, plan, context);
+            ApplyRules(entityType, plan, context);
         }
+
+        // Phase 2: each enricher called exactly once, after all data is loaded
+        foreach (var enricher in _enricherRegistry.GetDistinctEnrichersFor(entityTypes))
+            enricher.Apply(context);
 
         context.FlushBagsToChanges();
     }
 
     private AuditEnrichmentPlan BuildCombinedPlan(Type entityType)
     {
-        var builder = new AuditEnrichmentPlanBuilder();
-
-        var domainPlan = _domainPlanProvider.GetPlan(entityType);
-        foreach (var rule in domainPlan.Rules)
-            builder.AddRule(rule);
-        foreach (var step in domainPlan.CustomSteps)
-            builder.AddCustomStep(step);
+        var builder = new AuditEnrichmentPlanBuilder()
+            .Merge(_domainPlanProvider.GetPlan(entityType));
 
         foreach (var enricher in _enricherRegistry.GetEnrichersFor(entityType))
             enricher.Configure(builder);
@@ -63,7 +63,7 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         return builder.Build();
     }
 
-    private void ApplyPlan(Type entityType, AuditEnrichmentPlan plan, AuditEnrichmentContext context)
+    private void ApplyRules(Type entityType, AuditEnrichmentPlan plan, AuditEnrichmentContext context)
     {
         var changes = context.GetChangesOfType(entityType).ToList();
         if (changes.Count == 0)
@@ -76,9 +76,6 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
 
         foreach (var customStep in plan.CustomSteps)
             customStep(context);
-
-        foreach (var enricher in _enricherRegistry.GetEnrichersFor(entityType))
-            enricher.Apply(context);
     }
 
     private static void LoadRequiredEntities(
