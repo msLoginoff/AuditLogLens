@@ -55,4 +55,22 @@ public sealed class AuditEnrichmentContext
             ? entities
             : Array.Empty<object>();
     }
+
+    internal void FlushBagsToChanges()
+    {
+        foreach (var change in Changes)
+        {
+            var bag = _bags[change];
+
+            foreach (var pair in bag.OldValues)
+            {
+                change.OldValues[pair.Key] = pair.Value;
+            }
+
+            foreach (var pair in bag.NewValues)
+            {
+                change.NewValues[pair.Key] = pair.Value;
+            }
+        }
+    }
 }

@@ -16,19 +16,14 @@ public static class AuditEnrichmentPlanBuilderReferenceExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldName);
         ArgumentNullException.ThrowIfNull(valueSelector);
 
-        builder.RequireEntityType(typeof(TTarget));
-
-        builder.AddRule(new ReferenceRule
+        return builder.AddRule(new ReferenceRule
         {
-            SourceEntityType = typeof(TSource),
             TargetEntityType = typeof(TTarget),
             ForeignKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(foreignKeyProperty),
             TargetKeyPropertyName = GetDefaultTargetKeyPropertyName<TTarget>(),
             FieldName = fieldName,
             ValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(valueSelector)
         });
-
-        return builder;
     }
 
     public static IAuditEnrichmentPlanBuilder Reference<TSource, TTarget, TKey>(
@@ -44,19 +39,14 @@ public static class AuditEnrichmentPlanBuilderReferenceExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldName);
         ArgumentNullException.ThrowIfNull(valueSelector);
 
-        builder.RequireEntityType(typeof(TTarget));
-
-        builder.AddRule(new ReferenceRule
+        return builder.AddRule(new ReferenceRule
         {
-            SourceEntityType = typeof(TSource),
             TargetEntityType = typeof(TTarget),
             ForeignKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(foreignKeyProperty),
             TargetKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(targetKeyProperty),
             FieldName = fieldName,
             ValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(valueSelector)
         });
-
-        return builder;
     }
 
     private static string GetDefaultTargetKeyPropertyName<TTarget>()

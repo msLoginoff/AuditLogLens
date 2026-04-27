@@ -13,6 +13,7 @@ public abstract class AuditEntityEnricherBase : IAuditEntityEnricher
         ArgumentNullException.ThrowIfNull(context);
 
         ApplyCustom(context);
+        context.FlushBagsToChanges();
         AfterApply(context);
     }
 

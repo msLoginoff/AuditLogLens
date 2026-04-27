@@ -2,11 +2,7 @@ namespace AuditLog.Enrichment;
 
 public interface IAuditEnrichmentPlanBuilder
 {
-    void RequireEntityType(Type entityType);
+    IAuditEnrichmentPlanBuilder AddRule(EnrichmentRule rule);
 
-    void AddRule(EnrichmentRule rule);
-
-    void AddCustomStep(Action<AuditEnrichmentContext> step);
-
-    AuditEnrichmentPlan Build();
+    IAuditEnrichmentPlanBuilder AddCustomStep(Action<AuditEnrichmentContext> step);
 }
