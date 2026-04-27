@@ -4,5 +4,8 @@ namespace AuditLog.Abstractions;
 
 public interface IAuditEnricher
 {
-    void Enrich(List<AuditChange> changes, DbContext dbContext);
+    Task EnrichAsync(
+        List<AuditChange> changes,
+        DbContext dbContext,
+        CancellationToken cancellationToken = default);
 }

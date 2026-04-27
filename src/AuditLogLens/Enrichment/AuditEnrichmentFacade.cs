@@ -10,9 +10,9 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
 {
     private static readonly MethodInfo LoadEntitiesGenericMethod =
         typeof(AuditEnrichmentFacade)
-            .GetMethod(nameof(LoadEntitiesGeneric), BindingFlags.NonPublic | BindingFlags.Static)
+            .GetMethod(nameof(LoadEntitiesGenericAsync), BindingFlags.NonPublic | BindingFlags.Static)
         ?? throw new InvalidOperationException(
-            $"Method {nameof(LoadEntitiesGeneric)} was not found.");
+            $"Method {nameof(LoadEntitiesGenericAsync)} was not found.");
 
     private static readonly ConcurrentDictionary<(Type Entity, Type Key), MethodInfo> ClosedMethodCache = new();
 
@@ -27,7 +27,10 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         _enricherRegistry = enricherRegistry;
     }
 
-    public void Enrich(List<AuditChange> changes, DbContext dbContext)
+    public async Task EnrichAsync(
+        List<AuditChange> changes,
+        DbContext dbContext,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(dbContext);
@@ -42,12 +45,12 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         foreach (var entityType in entityTypes)
         {
             var plan = BuildCombinedPlan(entityType);
-            ApplyRules(entityType, plan, context);
+            await ApplyRulesAsync(entityType, plan, context, cancellationToken).ConfigureAwait(false);
         }
 
         // Phase 2: each enricher called exactly once, after all data is loaded
         foreach (var enricher in _enricherRegistry.GetDistinctEnrichersFor(entityTypes))
-            enricher.Apply(context);
+            await enricher.ApplyAsync(context, cancellationToken).ConfigureAwait(false);
 
         context.FlushBagsToChanges();
     }
@@ -63,13 +66,17 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         return builder.Build();
     }
 
-    private void ApplyRules(Type entityType, AuditEnrichmentPlan plan, AuditEnrichmentContext context)
+    private async Task ApplyRulesAsync(
+        Type entityType,
+        AuditEnrichmentPlan plan,
+        AuditEnrichmentContext context,
+        CancellationToken cancellationToken)
     {
         var changes = context.GetChangesOfType(entityType).ToList();
         if (changes.Count == 0)
             return;
 
-        LoadRequiredEntities(plan.Rules, changes, context);
+        await LoadRequiredEntitiesAsync(plan.Rules, changes, context, cancellationToken).ConfigureAwait(false);
 
         foreach (var rule in plan.Rules)
             rule.Apply(changes, context);
@@ -78,10 +85,11 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
             customStep(context);
     }
 
-    private static void LoadRequiredEntities(
+    private static async Task LoadRequiredEntitiesAsync(
         IReadOnlyCollection<EnrichmentRule> rules,
         IReadOnlyList<AuditChange> changes,
-        AuditEnrichmentContext context)
+        AuditEnrichmentContext context,
+        CancellationToken cancellationToken)
     {
         var groups = rules
             .Select(r => r.BuildLoadRequest(changes))
@@ -99,18 +107,20 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
             if (values.Count == 0)
                 continue;
 
-            var loaded = LoadEntitiesByPropertyValues(
-                context.DbContext, entityType, group.Key.PropertyName, values);
+            var loaded = await LoadEntitiesByPropertyValuesAsync(
+                    context.DbContext, entityType, group.Key.PropertyName, values, cancellationToken)
+                .ConfigureAwait(false);
 
             context.SetLoadedEntities(entityType, Deduplicate(context.DbContext, entityType, loaded));
         }
     }
 
-    private static IReadOnlyList<object> LoadEntitiesByPropertyValues(
+    private static Task<IReadOnlyList<object>> LoadEntitiesByPropertyValuesAsync(
         DbContext dbContext,
         Type entityType,
         string propertyName,
-        IReadOnlyList<object> values)
+        IReadOnlyList<object> values,
+        CancellationToken cancellationToken)
     {
         var efEntityType = dbContext.Model.FindEntityType(entityType)
                            ?? throw new InvalidOperationException(
@@ -124,14 +134,15 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
             (entityType, property.ClrType),
             static key => LoadEntitiesGenericMethod.MakeGenericMethod(key.Entity, key.Key));
 
-        return (IReadOnlyList<object>)(method.Invoke(null, [dbContext, propertyName, values])
-                                       ?? Array.Empty<object>());
+        return (Task<IReadOnlyList<object>>)(method.Invoke(null, [dbContext, propertyName, values, cancellationToken])
+                                             ?? Task.FromResult<IReadOnlyList<object>>(Array.Empty<object>()));
     }
 
-    private static IReadOnlyList<object> LoadEntitiesGeneric<TEntity, TProperty>(
+    private static async Task<IReadOnlyList<object>> LoadEntitiesGenericAsync<TEntity, TProperty>(
         DbContext dbContext,
         string propertyName,
-        IReadOnlyList<object> rawValues)
+        IReadOnlyList<object> rawValues,
+        CancellationToken cancellationToken)
         where TEntity : class
     {
         var typedValues = rawValues.Select(x => (TProperty)x).Distinct().ToList();
@@ -139,12 +150,13 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         if (typedValues.Count == 0)
             return Array.Empty<object>();
 
-        return dbContext
+        return await dbContext
             .Set<TEntity>()
             .AsNoTracking()
             .Where(x => typedValues.Contains(EF.Property<TProperty>(x, propertyName)))
             .Cast<object>()
-            .ToList();
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static IReadOnlyList<object> Deduplicate(

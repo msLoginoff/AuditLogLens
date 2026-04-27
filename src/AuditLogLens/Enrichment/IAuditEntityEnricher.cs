@@ -6,5 +6,5 @@ public interface IAuditEntityEnricher
 
     void Configure(IAuditEnrichmentPlanBuilder builder);
 
-    void Apply(AuditEnrichmentContext context);
+    Task ApplyAsync(AuditEnrichmentContext context, CancellationToken cancellationToken = default);
 }

@@ -8,20 +8,20 @@ public abstract class AuditEntityEnricherBase : IAuditEntityEnricher
     {
     }
 
-    public void Apply(AuditEnrichmentContext context)
+    public async Task ApplyAsync(AuditEnrichmentContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        ApplyCustom(context);
+        await ApplyCustomAsync(context, cancellationToken).ConfigureAwait(false);
         context.FlushBagsToChanges();
-        AfterApply(context);
+        await AfterApplyAsync(context, cancellationToken).ConfigureAwait(false);
     }
 
-    protected virtual void ApplyCustom(AuditEnrichmentContext context)
-    {
-    }
+    protected virtual Task ApplyCustomAsync(AuditEnrichmentContext context,
+        CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
 
-    protected virtual void AfterApply(AuditEnrichmentContext context)
-    {
-    }
+    protected virtual Task AfterApplyAsync(AuditEnrichmentContext context,
+        CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
 }

@@ -79,7 +79,7 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         {
             var changes = _changeDetector.DetectPostSaveChanges(dbContext, saveContext);
 
-            _enricher.Enrich(changes, dbContext);
+            _enricher.EnrichAsync(changes, dbContext).GetAwaiter().GetResult();
 
             _writer.WriteAsync(changes, dbContext).GetAwaiter().GetResult();
         }
@@ -111,9 +111,9 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         {
             var changes = _changeDetector.DetectPostSaveChanges(dbContext, saveContext);
 
-            _enricher.Enrich(changes, dbContext);
+            await _enricher.EnrichAsync(changes, dbContext, cancellationToken).ConfigureAwait(false);
 
-            await _writer.WriteAsync(changes, dbContext, cancellationToken);
+            await _writer.WriteAsync(changes, dbContext, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
