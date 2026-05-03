@@ -33,7 +33,7 @@ public sealed class ReverseReferenceRule : EnrichmentRule
 
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
-        var loadedEntities = context.GetLoadedEntities(TargetEntityType);
+        var loadedEntities = context.GetLoadedEntities(TargetEntityType, TargetForeignKeyPropertyName);
 
         foreach (var change in changes)
         {

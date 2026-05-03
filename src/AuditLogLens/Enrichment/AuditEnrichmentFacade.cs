@@ -40,12 +40,17 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
 
         var context = new AuditEnrichmentContext(changes, dbContext);
         var entityTypes = changes.Select(x => x.EntityType).Distinct().ToList();
+        var plansByEntityType = entityTypes.ToDictionary(
+            entityType => entityType,
+            BuildCombinedPlan);
 
-        // Phase 1: load data + apply rules per entity type
-        foreach (var entityType in entityTypes)
+        var loadRequests = CollectLoadRequests(plansByEntityType, context);
+        await LoadRequiredEntitiesAsync(loadRequests, context, cancellationToken).ConfigureAwait(false);
+
+        // Phase 1: apply rules after all required data has been globally preloaded
+        foreach (var (entityType, plan) in plansByEntityType)
         {
-            var plan = BuildCombinedPlan(entityType);
-            await ApplyRulesAsync(entityType, plan, context, cancellationToken).ConfigureAwait(false);
+            ApplyRules(entityType, plan, context);
         }
 
         // Phase 2: each enricher called exactly once, after all data is loaded
@@ -66,17 +71,35 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         return builder.Build();
     }
 
-    private async Task ApplyRulesAsync(
+    private static IReadOnlyList<EntityLoadRequest> CollectLoadRequests(
+        IReadOnlyDictionary<Type, AuditEnrichmentPlan> plansByEntityType,
+        AuditEnrichmentContext context)
+    {
+        var requests = new List<EntityLoadRequest>();
+
+        foreach (var (entityType, plan) in plansByEntityType)
+        {
+            var changes = context.GetChangesOfType(entityType).ToList();
+            if (changes.Count == 0)
+                continue;
+
+            requests.AddRange(
+                plan.Rules
+                    .Select(rule => rule.BuildLoadRequest(changes))
+                    .OfType<EntityLoadRequest>());
+        }
+
+        return requests;
+    }
+
+    private static void ApplyRules(
         Type entityType,
         AuditEnrichmentPlan plan,
-        AuditEnrichmentContext context,
-        CancellationToken cancellationToken)
+        AuditEnrichmentContext context)
     {
         var changes = context.GetChangesOfType(entityType).ToList();
         if (changes.Count == 0)
             return;
-
-        await LoadRequiredEntitiesAsync(plan.Rules, changes, context, cancellationToken).ConfigureAwait(false);
 
         foreach (var rule in plan.Rules)
             rule.Apply(changes, context);
@@ -86,32 +109,29 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
     }
 
     private static async Task LoadRequiredEntitiesAsync(
-        IReadOnlyCollection<EnrichmentRule> rules,
-        IReadOnlyList<AuditChange> changes,
+        IReadOnlyCollection<EntityLoadRequest> loadRequests,
         AuditEnrichmentContext context,
         CancellationToken cancellationToken)
     {
-        var groups = rules
-            .Select(r => r.BuildLoadRequest(changes))
-            .OfType<EntityLoadRequest>()
-            .GroupBy(r => (r.EntityType, r.PropertyName));
+        var groups = loadRequests.GroupBy(r => (r.EntityType, r.PropertyName));
 
         foreach (var group in groups)
         {
             var entityType = group.Key.EntityType;
-
-            if (context.GetLoadedEntities(entityType).Count > 0)
-                continue;
+            var propertyName = group.Key.PropertyName;
 
             var values = group.SelectMany(r => r.Values).Distinct().ToList();
             if (values.Count == 0)
                 continue;
 
             var loaded = await LoadEntitiesByPropertyValuesAsync(
-                    context.DbContext, entityType, group.Key.PropertyName, values, cancellationToken)
+                    context.DbContext, entityType, propertyName, values, cancellationToken)
                 .ConfigureAwait(false);
 
-            context.SetLoadedEntities(entityType, Deduplicate(context.DbContext, entityType, loaded));
+            context.SetLoadedEntities(
+                entityType,
+                propertyName,
+                Deduplicate(context.DbContext, entityType, loaded));
         }
     }
 

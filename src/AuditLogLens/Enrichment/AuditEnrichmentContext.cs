@@ -5,7 +5,7 @@ namespace AuditLog.Enrichment;
 public sealed class AuditEnrichmentContext
 {
     private readonly Dictionary<AuditChange, AuditEnrichmentBag> _bags = new();
-    private readonly Dictionary<Type, List<object>> _loadedEntities = new();
+    private readonly Dictionary<(Type EntityType, string PropertyName), List<object>> _loadedEntities = new();
 
     public AuditEnrichmentContext(
         IReadOnlyList<AuditChange> changes,
@@ -39,19 +39,24 @@ public sealed class AuditEnrichmentContext
         return _bags[change];
     }
 
-    public void SetLoadedEntities(Type entityType, IEnumerable<object> entities)
+    public void SetLoadedEntities(
+        Type entityType,
+        string propertyName,
+        IEnumerable<object> entities)
     {
         ArgumentNullException.ThrowIfNull(entityType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
         ArgumentNullException.ThrowIfNull(entities);
 
-        _loadedEntities[entityType] = entities.ToList();
+        _loadedEntities[(entityType, propertyName)] = entities.ToList();
     }
 
-    public IReadOnlyList<object> GetLoadedEntities(Type entityType)
+    public IReadOnlyList<object> GetLoadedEntities(Type entityType, string propertyName)
     {
         ArgumentNullException.ThrowIfNull(entityType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
 
-        return _loadedEntities.TryGetValue(entityType, out var entities)
+        return _loadedEntities.TryGetValue((entityType, propertyName), out var entities)
             ? entities
             : Array.Empty<object>();
     }

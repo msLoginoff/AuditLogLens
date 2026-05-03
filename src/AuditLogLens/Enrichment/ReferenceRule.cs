@@ -40,7 +40,7 @@ public sealed class ReferenceRule : EnrichmentRule
 
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
-        var loadedEntities = context.GetLoadedEntities(TargetEntityType);
+        var loadedEntities = context.GetLoadedEntities(TargetEntityType, TargetKeyPropertyName);
 
         foreach (var change in changes)
         {

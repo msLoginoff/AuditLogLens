@@ -6,7 +6,5 @@ public interface IAuditChangeDetector
 {
     AuditSaveContext DetectPreSaveChanges(DbContext dbContext);
 
-    List<AuditChange> DetectPostSaveChanges(
-        DbContext dbContext,
-        AuditSaveContext saveContext);
+    List<AuditChange> DetectPostSaveChanges(DbContext dbContext, AuditSaveContext saveContext);
 }
