@@ -1,0 +1,51 @@
+using AuditLog.Abstractions;
+using AuditLog.Interceptors;
+using Microsoft.EntityFrameworkCore;
+
+namespace AuditLog.Writer;
+
+public sealed class EfAuditWriter<TAuditEntry> : IAuditWriter
+    where TAuditEntry : class
+{
+    private readonly IEnumerable<IAuditEntryMapper<TAuditEntry>> _mappers;
+    private readonly AuditSaveChangesSuppressor _suppressor;
+
+    public EfAuditWriter(
+        IEnumerable<IAuditEntryMapper<TAuditEntry>> mappers,
+        AuditSaveChangesSuppressor suppressor)
+    {
+        _mappers = mappers;
+        _suppressor = suppressor;
+    }
+
+    public async Task WriteAsync(
+        IReadOnlyList<AuditChange> changes,
+        DbContext dbContext,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        ArgumentNullException.ThrowIfNull(dbContext);
+
+        if (changes.Count == 0)
+            return;
+
+        var mapper = _mappers.FirstOrDefault(x => x.CanMap(dbContext))
+                     ?? throw new InvalidOperationException(
+                         $"No audit entry mapper for {typeof(TAuditEntry).FullName} can map {dbContext.GetType().FullName}.");
+
+        var auditEntries = changes
+            .Select(change => mapper.Map(change, dbContext))
+            .OfType<TAuditEntry>()
+            .ToList();
+
+        if (auditEntries.Count == 0)
+            return;
+
+        dbContext.Set<TAuditEntry>().AddRange(auditEntries);
+
+        using (_suppressor.Suppress())
+        {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+}

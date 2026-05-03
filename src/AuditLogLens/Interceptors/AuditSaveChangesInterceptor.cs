@@ -10,17 +10,20 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
     private readonly IAuditChangeDetector _changeDetector;
     private readonly IAuditEnricher _enricher;
     private readonly IAuditWriter _writer;
+    private readonly AuditSaveChangesSuppressor _suppressor;
 
     private readonly ConditionalWeakTable<DbContext, AuditSaveContext> _saveContexts = new();
 
     public AuditSaveChangesInterceptor(
         IAuditChangeDetector changeDetector,
         IAuditEnricher enricher,
-        IAuditWriter writer)
+        IAuditWriter writer,
+        AuditSaveChangesSuppressor suppressor)
     {
         _changeDetector = changeDetector;
         _enricher = enricher;
         _writer = writer;
+        _suppressor = suppressor;
     }
 
     public override InterceptionResult<int> SavingChanges(
@@ -28,6 +31,11 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         InterceptionResult<int> result)
     {
         var dbContext = eventData.Context;
+        if (_suppressor.IsSuppressed)
+        {
+            return result;
+        }
+
         if (dbContext is null)
         {
             return result;
@@ -47,6 +55,11 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         CancellationToken cancellationToken = default)
     {
         var dbContext = eventData.Context;
+        if (_suppressor.IsSuppressed)
+        {
+            return result;
+        }
+
         if (dbContext is null)
         {
             return result;
@@ -65,6 +78,11 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         int result)
     {
         var dbContext = eventData.Context;
+        if (_suppressor.IsSuppressed)
+        {
+            return result;
+        }
+
         if (dbContext is null)
         {
             return result;
@@ -97,6 +115,11 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         CancellationToken cancellationToken = default)
     {
         var dbContext = eventData.Context;
+        if (_suppressor.IsSuppressed)
+        {
+            return result;
+        }
+
         if (dbContext is null)
         {
             return result;

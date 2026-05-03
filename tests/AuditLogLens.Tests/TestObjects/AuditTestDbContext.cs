@@ -13,4 +13,5 @@ public sealed class AuditTestDbContext : DbContext
     public DbSet<ForbiddenEntity> ForbiddenEntities => Set<ForbiddenEntity>();
     public DbSet<RelatedEntity> RelatedEntities => Set<RelatedEntity>();
     public DbSet<SpecialDeleteEntity> SpecialDeleteEntities => Set<SpecialDeleteEntity>();
+    public DbSet<TestAuditEntry> TestAuditEntries => Set<TestAuditEntry>();
 }

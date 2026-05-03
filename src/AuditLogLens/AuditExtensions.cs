@@ -3,6 +3,7 @@ using AuditLog.Enrichment;
 using AuditLog.Enrichment.Domain;
 using AuditLog.Interceptors;
 using AuditLog.Legacy;
+using AuditLog.Writer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,7 +17,8 @@ public static class AuditExtensions
         services.AddScoped<AuditEntityEnricherRegistry>();
         services.AddScoped<IAuditChangeDetector, EfAuditChangeDetector>();
         services.AddScoped<IAuditEnricher, AuditEnrichmentFacade>();
-        services.AddScoped<IAuditWriter, LegacyEfAuditWriter>();
+        services.AddScoped<IAuditWriter, UnconfiguredAuditWriter>();
+        services.AddSingleton<AuditSaveChangesSuppressor>();
         services.AddScoped<AuditSaveChangesInterceptor>();
 
         return services;
@@ -28,5 +30,16 @@ public static class AuditExtensions
     {
         return builder.AddInterceptors(
             provider.GetRequiredService<AuditSaveChangesInterceptor>());
+    }
+
+    public static IServiceCollection AddEfAuditWriter<TAuditEntry, TAuditEntryMapper>(
+        this IServiceCollection services)
+        where TAuditEntry : class
+        where TAuditEntryMapper : class, IAuditEntryMapper<TAuditEntry>
+    {
+        services.AddScoped<IAuditEntryMapper<TAuditEntry>, TAuditEntryMapper>();
+        services.AddScoped<IAuditWriter, EfAuditWriter<TAuditEntry>>();
+
+        return services;
     }
 }
