@@ -1,7 +1,7 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLog.Enrichment;
+namespace AuditLogLens.Enrichment;
 
 public sealed class ReferenceRule : EnrichmentRule
 {

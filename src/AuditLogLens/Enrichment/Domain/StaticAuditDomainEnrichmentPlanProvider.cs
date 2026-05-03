@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 
-namespace AuditLog.Enrichment.Domain;
+namespace AuditLogLens.Enrichment.Domain;
 
 public sealed class StaticAuditDomainEnrichmentPlanProvider : IAuditDomainEnrichmentPlanProvider
 {

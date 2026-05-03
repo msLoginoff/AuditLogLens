@@ -1,4 +1,4 @@
-namespace AuditLog.Interceptors;
+namespace AuditLogLens.Interceptors;
 
 public sealed class AuditSaveChangesSuppressor
 {

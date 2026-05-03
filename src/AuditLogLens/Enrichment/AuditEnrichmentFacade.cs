@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Reflection;
-using AuditLog.Abstractions;
-using AuditLog.Enrichment.Domain;
+using AuditLogLens.Abstractions;
+using AuditLogLens.Enrichment.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLog.Enrichment;
+namespace AuditLogLens.Enrichment;
 
 public sealed class AuditEnrichmentFacade : IAuditEnricher
 {

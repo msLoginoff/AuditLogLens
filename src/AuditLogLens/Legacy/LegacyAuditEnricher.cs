@@ -1,7 +1,7 @@
-using AuditLog.Abstractions;
+using AuditLogLens.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLog.Legacy;
+namespace AuditLogLens.Legacy;
 
 public sealed class LegacyAuditEnricher : IAuditEnricher
 {

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
-namespace AuditLog.Tests.TestObjects;
+namespace AuditLogLens.Tests.TestObjects;
 
 public sealed class TestAuditRestrictions : AuditRestrictionsBase
 {

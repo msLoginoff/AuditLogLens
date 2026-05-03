@@ -1,4 +1,4 @@
-namespace AuditLog.Tests.TestObjects;
+namespace AuditLogLens.Tests.TestObjects;
 
 public sealed class AllowedEntity
 {

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLog.Abstractions;
+namespace AuditLogLens.Abstractions;
 
 public interface IAuditEntryMapper<TAuditEntry>
     where TAuditEntry : class

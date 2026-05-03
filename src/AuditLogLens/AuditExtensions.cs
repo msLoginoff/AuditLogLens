@@ -1,13 +1,13 @@
-using AuditLog.Abstractions;
-using AuditLog.Enrichment;
-using AuditLog.Enrichment.Domain;
-using AuditLog.Interceptors;
-using AuditLog.Legacy;
-using AuditLog.Writer;
+using AuditLogLens.Abstractions;
+using AuditLogLens.Enrichment;
+using AuditLogLens.Enrichment.Domain;
+using AuditLogLens.Interceptors;
+using AuditLogLens.Legacy;
+using AuditLogLens.Writer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AuditLog;
+namespace AuditLogLens;
 
 public static class AuditExtensions
 {

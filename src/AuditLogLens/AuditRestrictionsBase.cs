@@ -1,8 +1,8 @@
-using AuditLog.Abstractions;
+using AuditLogLens.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
-namespace AuditLog;
+namespace AuditLogLens;
 
 public abstract class AuditRestrictionsBase : IAuditRestrictions
 {

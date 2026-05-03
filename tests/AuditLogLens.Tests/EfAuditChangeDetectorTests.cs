@@ -1,10 +1,10 @@
-using AuditLog.Legacy;
-using AuditLog.Tests.TestObjects;
+using AuditLogLens.Legacy;
+using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace AuditLog.Tests;
+namespace AuditLogLens.Tests;
 
 public class EfAuditChangeDetectorTests
 {

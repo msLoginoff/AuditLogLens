@@ -1,4 +1,4 @@
-namespace AuditLog.Enrichment;
+namespace AuditLogLens.Enrichment;
 
 public sealed class OverrideFieldRule : EnrichmentRule
 {

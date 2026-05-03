@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
-namespace AuditLog;
+namespace AuditLogLens;
 
 public sealed class AuditSaveContext
 {

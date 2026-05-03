@@ -1,4 +1,4 @@
-namespace AuditLog.Enrichment;
+namespace AuditLogLens.Enrichment;
 
 internal sealed class EntityLoadRequest
 {

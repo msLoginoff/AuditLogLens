@@ -1,4 +1,4 @@
-namespace AuditLog.Enrichment.Domain;
+namespace AuditLogLens.Enrichment.Domain;
 
 public interface IAuditDomainEnrichmentPlanProvider
 {

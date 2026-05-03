@@ -1,4 +1,4 @@
-﻿namespace AuditLog;
+﻿namespace AuditLogLens;
 
 public class AuditRestrictionRule
 {

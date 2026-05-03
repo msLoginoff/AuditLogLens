@@ -1,11 +1,11 @@
-using AuditLog.Enrichment;
-using AuditLog.Enrichment.Domain;
-using AuditLog.Tests.TestObjects;
+using AuditLogLens.Enrichment;
+using AuditLogLens.Enrichment.Domain;
+using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace AuditLog.Tests;
+namespace AuditLogLens.Tests;
 
 public class AuditEnrichmentFacadeTests
 {

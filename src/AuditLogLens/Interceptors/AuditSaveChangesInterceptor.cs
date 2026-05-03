@@ -1,9 +1,9 @@
 using System.Runtime.CompilerServices;
-using AuditLog.Abstractions;
+using AuditLogLens.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace AuditLog.Interceptors;
+namespace AuditLogLens.Interceptors;
 
 public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
 {

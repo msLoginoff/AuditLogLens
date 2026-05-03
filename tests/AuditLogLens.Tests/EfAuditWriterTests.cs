@@ -1,11 +1,11 @@
-using AuditLog.Abstractions;
-using AuditLog.Tests.TestObjects;
+using AuditLogLens.Abstractions;
+using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace AuditLog.Tests;
+namespace AuditLogLens.Tests;
 
 public class EfAuditWriterTests
 {

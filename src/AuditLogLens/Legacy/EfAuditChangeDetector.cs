@@ -1,8 +1,8 @@
-using AuditLog.Abstractions;
+using AuditLogLens.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
-namespace AuditLog.Legacy;
+namespace AuditLogLens.Legacy;
 
 public sealed class EfAuditChangeDetector : IAuditChangeDetector
 {

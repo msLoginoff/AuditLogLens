@@ -1,7 +1,7 @@
-using AuditLog.Abstractions;
+using AuditLogLens.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLog.Writer;
+namespace AuditLogLens.Writer;
 
 public sealed class UnconfiguredAuditWriter : IAuditWriter
 {

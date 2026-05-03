@@ -1,8 +1,8 @@
-using AuditLog.Abstractions;
-using AuditLog.Interceptors;
+using AuditLogLens.Abstractions;
+using AuditLogLens.Interceptors;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLog.Writer;
+namespace AuditLogLens.Writer;
 
 public sealed class EfAuditWriter<TAuditEntry> : IAuditWriter
     where TAuditEntry : class

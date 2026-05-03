@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
-namespace AuditLog.Abstractions;
+namespace AuditLogLens.Abstractions;
 
 public interface IAuditRestrictions
 {
