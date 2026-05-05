@@ -13,6 +13,13 @@ public static class AuditExtensions
 {
     public static IServiceCollection AddAuditInfrastructure(this IServiceCollection services)
     {
+        return services.AddAuditInfrastructure(_ => { });
+    }
+
+    public static IServiceCollection AddAuditInfrastructure(
+        this IServiceCollection services,
+        Action<AuditOptions> configure)
+    {
         services.AddSingleton<IAuditDomainEnrichmentPlanProvider, StaticAuditDomainEnrichmentPlanProvider>();
         services.AddScoped<AuditEntityEnricherRegistry>();
         services.AddScoped<IAuditChangeDetector, EfAuditChangeDetector>();
@@ -20,6 +27,10 @@ public static class AuditExtensions
         services.AddScoped<IAuditWriter, UnconfiguredAuditWriter>();
         services.AddSingleton<AuditSaveChangesSuppressor>();
         services.AddScoped<AuditSaveChangesInterceptor>();
+
+        var options = new AuditOptions();
+        configure(options);
+        services.AddSingleton(options);
 
         return services;
     }

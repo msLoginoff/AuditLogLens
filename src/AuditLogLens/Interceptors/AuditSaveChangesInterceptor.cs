@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Transactions;
 using AuditLogLens.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -11,6 +12,7 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
     private readonly IAuditEnricher _enricher;
     private readonly IAuditWriter _writer;
     private readonly AuditSaveChangesSuppressor _suppressor;
+    private readonly AuditOptions _options;
 
     private readonly ConditionalWeakTable<DbContext, AuditSaveContext> _saveContexts = new();
 
@@ -18,12 +20,14 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         IAuditChangeDetector changeDetector,
         IAuditEnricher enricher,
         IAuditWriter writer,
-        AuditSaveChangesSuppressor suppressor)
+        AuditSaveChangesSuppressor suppressor,
+        AuditOptions options)
     {
         _changeDetector = changeDetector;
         _enricher = enricher;
         _writer = writer;
         _suppressor = suppressor;
+        _options = options;
     }
 
     public override InterceptionResult<int> SavingChanges(
@@ -42,6 +46,7 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         }
 
         var saveContext = _changeDetector.DetectPreSaveChanges(dbContext);
+        PrepareSaveContext(dbContext, saveContext);
 
         _saveContexts.Remove(dbContext);
         _saveContexts.Add(dbContext, saveContext);
@@ -66,6 +71,7 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         }
 
         var saveContext = _changeDetector.DetectPreSaveChanges(dbContext);
+        await PrepareSaveContextAsync(dbContext, saveContext, cancellationToken).ConfigureAwait(false);
 
         _saveContexts.Remove(dbContext);
         _saveContexts.Add(dbContext, saveContext);
@@ -100,6 +106,13 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
             _enricher.EnrichAsync(changes, dbContext).GetAwaiter().GetResult();
 
             _writer.WriteAsync(changes, dbContext).GetAwaiter().GetResult();
+
+            CommitOwnedTransaction(saveContext);
+        }
+        catch
+        {
+            RollbackOwnedTransaction(saveContext);
+            throw;
         }
         finally
         {
@@ -137,6 +150,13 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
             await _enricher.EnrichAsync(changes, dbContext, cancellationToken).ConfigureAwait(false);
 
             await _writer.WriteAsync(changes, dbContext, cancellationToken).ConfigureAwait(false);
+
+            await CommitOwnedTransactionAsync(saveContext, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await RollbackOwnedTransactionAsync(saveContext, cancellationToken).ConfigureAwait(false);
+            throw;
         }
         finally
         {
@@ -148,23 +168,159 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
 
     public override void SaveChangesFailed(DbContextErrorEventData eventData)
     {
-        if (eventData.Context is not null)
+        if (eventData.Context is not null
+            && _saveContexts.TryGetValue(eventData.Context, out var saveContext))
         {
+            RollbackOwnedTransaction(saveContext);
             _saveContexts.Remove(eventData.Context);
         }
 
         base.SaveChangesFailed(eventData);
     }
 
-    public override Task SaveChangesFailedAsync(
+    public override async Task SaveChangesFailedAsync(
         DbContextErrorEventData eventData,
         CancellationToken cancellationToken = default)
     {
-        if (eventData.Context is not null)
+        if (eventData.Context is not null
+            && _saveContexts.TryGetValue(eventData.Context, out var saveContext))
         {
+            await RollbackOwnedTransactionAsync(saveContext, cancellationToken).ConfigureAwait(false);
             _saveContexts.Remove(eventData.Context);
         }
 
-        return base.SaveChangesFailedAsync(eventData, cancellationToken);
+        await base.SaveChangesFailedAsync(eventData, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void PrepareSaveContext(DbContext dbContext, AuditSaveContext saveContext)
+    {
+        saveContext.WriteMode = _options.ResolveWriteMode(dbContext, saveContext);
+
+        if (!ShouldOpenOwnedTransaction(dbContext, saveContext))
+        {
+            return;
+        }
+
+        saveContext.Transaction = dbContext.Database.BeginTransaction();
+        saveContext.OwnsTransaction = true;
+    }
+
+    private async Task PrepareSaveContextAsync(
+        DbContext dbContext,
+        AuditSaveContext saveContext,
+        CancellationToken cancellationToken)
+    {
+        saveContext.WriteMode = _options.ResolveWriteMode(dbContext, saveContext);
+
+        if (!ShouldOpenOwnedTransaction(dbContext, saveContext))
+        {
+            return;
+        }
+
+        saveContext.Transaction = await dbContext.Database
+            .BeginTransactionAsync(cancellationToken)
+            .ConfigureAwait(false);
+        saveContext.OwnsTransaction = true;
+    }
+
+    private static bool ShouldOpenOwnedTransaction(DbContext dbContext, AuditSaveContext saveContext)
+    {
+        if (saveContext.WriteMode != AuditWriteMode.Transactional
+            || saveContext.PreSaveChanges.Count == 0
+            || dbContext.Database.CurrentTransaction is not null
+            || Transaction.Current is not null)
+        {
+            return false;
+        }
+
+        if (dbContext.Database.CreateExecutionStrategy().RetriesOnFailure)
+        {
+            throw new InvalidOperationException(
+                "Transactional audit writing opens an EF Core transaction internally, but the current execution strategy retries on failure. " +
+                "Open an explicit transaction outside SaveChanges and execute the whole operation through DbContext.Database.CreateExecutionStrategy(), " +
+                "or use AuditWriteMode.NonTransactional.");
+        }
+
+        return true;
+    }
+
+    private static void CommitOwnedTransaction(AuditSaveContext saveContext)
+    {
+        if (!saveContext.OwnsTransaction || saveContext.Transaction is null)
+        {
+            return;
+        }
+
+        try
+        {
+            saveContext.Transaction.Commit();
+        }
+        finally
+        {
+            saveContext.Transaction.Dispose();
+            saveContext.Transaction = null;
+            saveContext.OwnsTransaction = false;
+        }
+    }
+
+    private static async Task CommitOwnedTransactionAsync(
+        AuditSaveContext saveContext,
+        CancellationToken cancellationToken)
+    {
+        if (!saveContext.OwnsTransaction || saveContext.Transaction is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await saveContext.Transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await saveContext.Transaction.DisposeAsync().ConfigureAwait(false);
+            saveContext.Transaction = null;
+            saveContext.OwnsTransaction = false;
+        }
+    }
+
+    private static void RollbackOwnedTransaction(AuditSaveContext saveContext)
+    {
+        if (!saveContext.OwnsTransaction || saveContext.Transaction is null)
+        {
+            return;
+        }
+
+        try
+        {
+            saveContext.Transaction.Rollback();
+        }
+        finally
+        {
+            saveContext.Transaction.Dispose();
+            saveContext.Transaction = null;
+            saveContext.OwnsTransaction = false;
+        }
+    }
+
+    private static async Task RollbackOwnedTransactionAsync(
+        AuditSaveContext saveContext,
+        CancellationToken cancellationToken)
+    {
+        if (!saveContext.OwnsTransaction || saveContext.Transaction is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await saveContext.Transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await saveContext.Transaction.DisposeAsync().ConfigureAwait(false);
+            saveContext.Transaction = null;
+            saveContext.OwnsTransaction = false;
+        }
     }
 }
