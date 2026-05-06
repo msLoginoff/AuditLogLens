@@ -12,6 +12,5 @@ public interface IAuditRestrictions
 
     bool IsAllowedProperty(
         string tableName,
-        string propertyName,
-        IReadOnlyDictionary<string, IReadOnlyCollection<string>>? additionalRestrictions = null);
+        string propertyName);
 }

@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using AuditLogLens.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -6,20 +7,25 @@ namespace AuditLogLens;
 
 public abstract class AuditRestrictionsBase : IAuditRestrictions
 {
-    private readonly Lazy<IReadOnlyDictionary<string, IReadOnlyCollection<string>>> _rulesDictionary;
+    private readonly Lazy<FrozenDictionary<string, FrozenSet<string>>> _rulesDictionary;
 
     protected AuditRestrictionsBase()
     {
-        _rulesDictionary = new Lazy<IReadOnlyDictionary<string, IReadOnlyCollection<string>>>(BuildRulesDictionary);
+        _rulesDictionary = new Lazy<FrozenDictionary<string, FrozenSet<string>>>(BuildRulesDictionary);
     }
 
-    protected abstract IReadOnlyCollection<AuditRestrictionRule> Rules { get; }
-
-    protected virtual IReadOnlyDictionary<string, IReadOnlyCollection<string>> BuildRulesDictionary()
+    protected virtual void Configure(AuditRestrictionRules rules)
     {
-        return Rules.ToDictionary(
-            x => x.AllowedTable,
-            x => x.ForbiddenProperties);
+    }
+
+    protected virtual bool ShouldAuditEntry(EntityEntry entry) => true;
+
+    protected virtual FrozenDictionary<string, FrozenSet<string>> BuildRulesDictionary()
+    {
+        var rules = new AuditRestrictionRules();
+        Configure(rules);
+
+        return rules.Build();
     }
 
     public virtual IReadOnlyCollection<string> GetAllowedTables()
@@ -35,24 +41,27 @@ public abstract class AuditRestrictionsBase : IAuditRestrictions
         }
 
         var tableName = entry.Metadata.ClrType.Name;
-        return IsAllowedTable(tableName);
+        return IsAllowedTable(tableName) && ShouldAuditEntry(entry);
     }
 
     public virtual bool IsAllowedTable(string tableName)
     {
-        return _rulesDictionary.Value.ContainsKey(tableName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
+
+        return _rulesDictionary.Value.Count == 0
+               || _rulesDictionary.Value.ContainsKey(tableName);
     }
 
     public virtual bool IsAllowedProperty(
         string tableName,
-        string propertyName,
-        IReadOnlyDictionary<string, IReadOnlyCollection<string>>? additionalRestrictions = null)
+        string propertyName)
     {
-        if (additionalRestrictions is not null
-            && additionalRestrictions.TryGetValue(tableName, out var additionallyForbidden)
-            && additionallyForbidden.Contains(propertyName))
+        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
+
+        if (_rulesDictionary.Value.Count == 0)
         {
-            return false;
+            return true;
         }
 
         return _rulesDictionary.Value.TryGetValue(tableName, out var forbiddenProperties)

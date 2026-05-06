@@ -25,6 +25,7 @@ public static class AuditExtensions
         services.AddScoped<AuditEntityEnricherRegistry>();
         services.AddScoped<IAuditChangeDetector, EfAuditChangeDetector>();
         services.AddScoped<IAuditEnricher, AuditEnrichmentFacade>();
+        services.TryAddSingleton<IAuditRestrictions, DefaultAuditRestrictions>();
         services.TryAddScoped<IAuditEntryMapper<AuditLogLensEntry>, DefaultAuditLogLensEntryMapper>();
         services.TryAddScoped<IAuditWriter, EfAuditWriter<AuditLogLensEntry>>();
         services.AddSingleton<AuditSaveChangesSuppressor>();

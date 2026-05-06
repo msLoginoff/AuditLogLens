@@ -5,27 +5,16 @@ namespace AuditLogLens.Tests.TestObjects;
 
 public sealed class TestAuditRestrictions : AuditRestrictionsBase
 {
-    protected override IReadOnlyCollection<AuditRestrictionRule> Rules =>
-    [
-        new AuditRestrictionRule
-        {
-            AllowedTable = nameof(AllowedEntity),
-            ForbiddenProperties = [nameof(AllowedEntity.Secret)]
-        },
-        new AuditRestrictionRule
-        {
-            AllowedTable = nameof(SpecialDeleteEntity),
-            ForbiddenProperties = []
-        }
-    ];
-
-    public override bool IsAllowedEntry(EntityEntry entry)
+    protected override void Configure(AuditRestrictionRules rules)
     {
-        if (!base.IsAllowedEntry(entry))
-        {
-            return false;
-        }
+        rules.For<AllowedEntity>()
+            .Ignore(x => x.Secret);
 
+        rules.For<SpecialDeleteEntity>();
+    }
+
+    protected override bool ShouldAuditEntry(EntityEntry entry)
+    {
         return entry is not { Entity: SpecialDeleteEntity, State: EntityState.Deleted };
     }
 }
