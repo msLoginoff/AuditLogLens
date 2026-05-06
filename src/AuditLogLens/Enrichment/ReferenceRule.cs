@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
@@ -5,6 +6,9 @@ namespace AuditLogLens.Enrichment;
 
 public sealed class ReferenceRule : EnrichmentRule
 {
+    private static readonly ConcurrentDictionary<(Type EntityType, string PropertyName), PropertyInfo> _propertyCache =
+        new();
+
     public required Type TargetEntityType { get; init; }
 
     public required string ForeignKeyPropertyName { get; init; }
@@ -41,6 +45,7 @@ public sealed class ReferenceRule : EnrichmentRule
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
         var loadedEntities = context.GetLoadedEntities(TargetEntityType, TargetKeyPropertyName);
+        var entitiesByKey = BuildEntityLookup(loadedEntities);
 
         foreach (var change in changes)
         {
@@ -48,18 +53,30 @@ public sealed class ReferenceRule : EnrichmentRule
 
             if (oldFk is not null)
             {
-                var oldTarget = loadedEntities.FirstOrDefault(x => Equals(GetKeyValue(x), oldFk));
-                if (oldTarget is not null)
+                if (entitiesByKey.TryGetValue(oldFk, out var oldTarget))
                     context.GetBagForChange(change).SetOld(FieldName, ValueSelector(oldTarget));
             }
 
             if (newFk is not null)
             {
-                var newTarget = loadedEntities.FirstOrDefault(x => Equals(GetKeyValue(x), newFk));
-                if (newTarget is not null)
+                if (entitiesByKey.TryGetValue(newFk, out var newTarget))
                     context.GetBagForChange(change).SetNew(FieldName, ValueSelector(newTarget));
             }
         }
+    }
+
+    private Dictionary<object, object> BuildEntityLookup(IReadOnlyList<object> loadedEntities)
+    {
+        var result = new Dictionary<object, object>();
+
+        foreach (var entity in loadedEntities)
+        {
+            var key = GetKeyValue(entity);
+            if (key is null || !result.TryAdd(key, entity))
+                continue;
+        }
+
+        return result;
     }
 
     private (object? oldFk, object? newFk) ResolveForeignKeys(AuditChange change)
@@ -71,11 +88,22 @@ public sealed class ReferenceRule : EnrichmentRule
 
         return change.State switch
         {
-            nameof(EntityState.Added) => (null, hasNew ? newFk : currentFk),
+            nameof(EntityState.Added) => (null, ResolveNewForeignKey(hasNew, newFk, currentFk)),
             nameof(EntityState.Deleted) => (hasOld ? oldFk : currentFk, null),
             nameof(EntityState.Modified) => ResolveModified(hasOld, oldFk, hasNew, newFk, currentFk),
             _ => (null, currentFk)
         };
+    }
+
+    private static object? ResolveNewForeignKey(
+        bool hasNew,
+        object? newFk,
+        object? currentFk)
+    {
+        if (currentFk is not null)
+            return currentFk;
+
+        return hasNew ? newFk : currentFk;
     }
 
     private static (object? oldFk, object? newFk) ResolveModified(
@@ -83,6 +111,9 @@ public sealed class ReferenceRule : EnrichmentRule
         bool hasNew, object? newFk,
         object? currentFk)
     {
+        if (currentFk is not null)
+            return (hasOld ? oldFk : currentFk, currentFk);
+
         if (hasOld || hasNew)
             return (hasOld ? oldFk : currentFk, hasNew ? newFk : currentFk);
 
@@ -91,10 +122,12 @@ public sealed class ReferenceRule : EnrichmentRule
 
     private object? GetKeyValue(object entity)
     {
-        var property = entity.GetType()
-                           .GetProperty(TargetKeyPropertyName, BindingFlags.Public | BindingFlags.Instance)
-                       ?? throw new InvalidOperationException(
-                           $"Property '{TargetKeyPropertyName}' was not found on type {entity.GetType().FullName}.");
+        var entityType = entity.GetType();
+        var property = _propertyCache.GetOrAdd(
+            (entityType, TargetKeyPropertyName),
+            static key => key.EntityType.GetProperty(key.PropertyName, BindingFlags.Public | BindingFlags.Instance)
+                          ?? throw new InvalidOperationException(
+                              $"Property '{key.PropertyName}' was not found on type {key.EntityType.FullName}."));
 
         return property.GetValue(entity);
     }

@@ -3,6 +3,8 @@ using System.Reflection;
 using AuditLogLens.Abstractions;
 using AuditLogLens.Enrichment.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace AuditLogLens.Enrichment;
 
@@ -114,6 +116,10 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         CancellationToken cancellationToken)
     {
         var groups = loadRequests.GroupBy(r => (r.EntityType, r.PropertyName));
+        var trackedEntries = context.DbContext.ChangeTracker
+            .Entries()
+            .Where(x => x.State != EntityState.Detached)
+            .ToList();
 
         foreach (var group in groups)
         {
@@ -124,37 +130,43 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
             if (values.Count == 0)
                 continue;
 
-            var loaded = await LoadEntitiesByPropertyValuesAsync(
-                    context.DbContext, entityType, propertyName, values, cancellationToken)
-                .ConfigureAwait(false);
+            var property = GetRequiredEfProperty(context.DbContext, entityType, propertyName);
+            var tracked = GetTrackedEntitiesByPropertyValues(
+                trackedEntries,
+                entityType,
+                propertyName,
+                values,
+                out var trackedValues);
+
+            var missingValues = values
+                .Where(x => !trackedValues.Contains(x))
+                .ToList();
+
+            var loaded = missingValues.Count == 0
+                ? []
+                : await LoadEntitiesByPropertyValuesAsync(
+                        context.DbContext, entityType, property, missingValues, cancellationToken)
+                    .ConfigureAwait(false);
 
             context.SetLoadedEntities(
                 entityType,
                 propertyName,
-                Deduplicate(context.DbContext, entityType, loaded));
+                Deduplicate(context.DbContext, entityType, tracked.Concat(loaded).ToList()));
         }
     }
 
     private static Task<IReadOnlyList<object>> LoadEntitiesByPropertyValuesAsync(
         DbContext dbContext,
         Type entityType,
-        string propertyName,
+        IProperty property,
         IReadOnlyList<object> values,
         CancellationToken cancellationToken)
     {
-        var efEntityType = dbContext.Model.FindEntityType(entityType)
-                           ?? throw new InvalidOperationException(
-                               $"Entity type {entityType.FullName} is not part of the current DbContext model.");
-
-        var property = efEntityType.FindProperty(propertyName)
-                       ?? throw new InvalidOperationException(
-                           $"Property '{propertyName}' was not found on entity type {entityType.FullName}.");
-
         var method = ClosedMethodCache.GetOrAdd(
             (entityType, property.ClrType),
             static key => LoadEntitiesGenericMethod.MakeGenericMethod(key.Entity, key.Key));
 
-        return (Task<IReadOnlyList<object>>)(method.Invoke(null, [dbContext, propertyName, values, cancellationToken])
+        return (Task<IReadOnlyList<object>>)(method.Invoke(null, [dbContext, property.Name, values, cancellationToken])
                                              ?? Task.FromResult<IReadOnlyList<object>>(Array.Empty<object>()));
     }
 
@@ -177,6 +189,54 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
             .Cast<object>()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private static IProperty GetRequiredEfProperty(
+        DbContext dbContext,
+        Type entityType,
+        string propertyName)
+    {
+        var efEntityType = dbContext.Model.FindEntityType(entityType)
+                           ?? throw new InvalidOperationException(
+                               $"Entity type {entityType.FullName} is not part of the current DbContext model.");
+
+        return efEntityType.FindProperty(propertyName)
+               ?? throw new InvalidOperationException(
+                   $"Property '{propertyName}' was not found on entity type {entityType.FullName}.");
+    }
+
+    private static IReadOnlyList<object> GetTrackedEntitiesByPropertyValues(
+        IReadOnlyList<EntityEntry> trackedEntries,
+        Type entityType,
+        string propertyName,
+        IReadOnlyCollection<object> values,
+        out HashSet<object> trackedValues)
+    {
+        trackedValues = [];
+
+        if (values.Count == 0)
+            return [];
+
+        var requestedValues = values.ToHashSet();
+        var result = new List<object>();
+
+        foreach (var entry in trackedEntries)
+        {
+            if (!entityType.IsAssignableFrom(entry.Metadata.ClrType)
+                || entry.Metadata.FindProperty(propertyName) is null)
+            {
+                continue;
+            }
+
+            var value = entry.Property(propertyName).CurrentValue;
+            if (value is null || !requestedValues.Contains(value))
+                continue;
+
+            trackedValues.Add(value);
+            result.Add(entry.Entity);
+        }
+
+        return result;
     }
 
     private static IReadOnlyList<object> Deduplicate(
