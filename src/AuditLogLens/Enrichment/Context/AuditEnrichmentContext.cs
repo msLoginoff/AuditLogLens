@@ -19,7 +19,7 @@ public sealed class AuditEnrichmentContext
         DbContext = dbContext;
         _changesByEntityType = changes
             .GroupBy(x => x.EntityType)
-            .ToDictionary(x => x.Key, x => (IReadOnlyList<AuditChange>)x.ToList());
+            .ToDictionary(x => x.Key, IReadOnlyList<AuditChange> (x) => x.ToList());
 
         foreach (var change in changes)
         {
@@ -38,7 +38,7 @@ public sealed class AuditEnrichmentContext
         ArgumentNullException.ThrowIfNull(entityType);
         return _changesByEntityType.TryGetValue(entityType, out var changes)
             ? changes
-            : Array.Empty<AuditChange>();
+            : [];
     }
 
     public AuditEnrichmentBag GetBagForChange(AuditChange change)

@@ -1,23 +1,11 @@
-using System.Collections.Concurrent;
-using System.Reflection;
 using AuditLogLens.Abstractions;
 using AuditLogLens.Enrichment.Domain;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace AuditLogLens.Enrichment;
 
 public sealed class AuditEnrichmentFacade : IAuditEnricher
 {
-    private static readonly MethodInfo LoadEntitiesGenericMethod =
-        typeof(AuditEnrichmentFacade)
-            .GetMethod(nameof(LoadEntitiesGenericAsync), BindingFlags.NonPublic | BindingFlags.Static)
-        ?? throw new InvalidOperationException(
-            $"Method {nameof(LoadEntitiesGenericAsync)} was not found.");
-
-    private static readonly ConcurrentDictionary<(Type Entity, Type Key), MethodInfo> ClosedMethodCache = new();
-
     private readonly IAuditDomainEnrichmentPlanProvider _domainPlanProvider;
     private readonly AuditEntityEnricherRegistry _enricherRegistry;
 
@@ -41,21 +29,22 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
             return;
 
         var context = new AuditEnrichmentContext(changes, dbContext);
-        var entityTypes = changes.Select(x => x.EntityType).Distinct().ToList();
-        var plansByEntityType = entityTypes.ToDictionary(
+        var entityTypes = context.EntityTypes;
+        var plansByEntityType = context.EntityTypes.ToDictionary(
             entityType => entityType,
             BuildCombinedPlan);
 
         var loadRequests = CollectLoadRequests(plansByEntityType, context);
-        await LoadRequiredEntitiesAsync(loadRequests, context, cancellationToken).ConfigureAwait(false);
+        await EnrichmentDataLoader.LoadAsync(loadRequests, context, cancellationToken)
+            .ConfigureAwait(false);
 
-        // Phase 1: apply rules after all required data has been globally preloaded
+        // Rules are applied only after all reference data has been globally preloaded
         foreach (var (entityType, plan) in plansByEntityType)
         {
             ApplyRules(entityType, plan, context);
         }
 
-        // Phase 2: each enricher called exactly once, after all data is loaded
+        // Entity enrichers run once per save operation, even if they handle several entity types
         foreach (var enricher in _enricherRegistry.GetDistinctEnrichersFor(entityTypes))
             await enricher.ApplyAsync(context, cancellationToken).ConfigureAwait(false);
 
@@ -81,7 +70,7 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
 
         foreach (var (entityType, plan) in plansByEntityType)
         {
-            var changes = context.GetChangesOfType(entityType).ToList();
+            var changes = context.GetChangesOfType(entityType);
             if (changes.Count == 0)
                 continue;
 
@@ -99,7 +88,7 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
         AuditEnrichmentPlan plan,
         AuditEnrichmentContext context)
     {
-        var changes = context.GetChangesOfType(entityType).ToList();
+        var changes = context.GetChangesOfType(entityType);
         if (changes.Count == 0)
             return;
 
@@ -108,165 +97,5 @@ public sealed class AuditEnrichmentFacade : IAuditEnricher
 
         foreach (var customStep in plan.CustomSteps)
             customStep(context);
-    }
-
-    private static async Task LoadRequiredEntitiesAsync(
-        IReadOnlyCollection<EntityLoadRequest> loadRequests,
-        AuditEnrichmentContext context,
-        CancellationToken cancellationToken)
-    {
-        var groups = loadRequests.GroupBy(r => (r.EntityType, r.PropertyName));
-        var trackedEntries = context.DbContext.ChangeTracker
-            .Entries()
-            .Where(x => x.State != EntityState.Detached)
-            .ToList();
-
-        foreach (var group in groups)
-        {
-            var entityType = group.Key.EntityType;
-            var propertyName = group.Key.PropertyName;
-
-            var values = group.SelectMany(r => r.Values).Distinct().ToList();
-            if (values.Count == 0)
-                continue;
-
-            var property = GetRequiredEfProperty(context.DbContext, entityType, propertyName);
-            var tracked = GetTrackedEntitiesByPropertyValues(
-                trackedEntries,
-                entityType,
-                propertyName,
-                values,
-                out var trackedValues);
-
-            var missingValues = values
-                .Where(x => !trackedValues.Contains(x))
-                .ToList();
-
-            var loaded = missingValues.Count == 0
-                ? []
-                : await LoadEntitiesByPropertyValuesAsync(
-                        context.DbContext, entityType, property, missingValues, cancellationToken)
-                    .ConfigureAwait(false);
-
-            context.SetLoadedEntities(
-                entityType,
-                propertyName,
-                Deduplicate(context.DbContext, entityType, tracked.Concat(loaded).ToList()));
-        }
-    }
-
-    private static Task<IReadOnlyList<object>> LoadEntitiesByPropertyValuesAsync(
-        DbContext dbContext,
-        Type entityType,
-        IProperty property,
-        IReadOnlyList<object> values,
-        CancellationToken cancellationToken)
-    {
-        var method = ClosedMethodCache.GetOrAdd(
-            (entityType, property.ClrType),
-            static key => LoadEntitiesGenericMethod.MakeGenericMethod(key.Entity, key.Key));
-
-        return (Task<IReadOnlyList<object>>)(method.Invoke(null, [dbContext, property.Name, values, cancellationToken])
-                                             ?? Task.FromResult<IReadOnlyList<object>>(Array.Empty<object>()));
-    }
-
-    private static async Task<IReadOnlyList<object>> LoadEntitiesGenericAsync<TEntity, TProperty>(
-        DbContext dbContext,
-        string propertyName,
-        IReadOnlyList<object> rawValues,
-        CancellationToken cancellationToken)
-        where TEntity : class
-    {
-        var typedValues = rawValues.Select(x => (TProperty)x).Distinct().ToList();
-
-        if (typedValues.Count == 0)
-            return Array.Empty<object>();
-
-        return await dbContext
-            .Set<TEntity>()
-            .AsNoTracking()
-            .Where(x => typedValues.Contains(EF.Property<TProperty>(x, propertyName)))
-            .Cast<object>()
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    private static IProperty GetRequiredEfProperty(
-        DbContext dbContext,
-        Type entityType,
-        string propertyName)
-    {
-        var efEntityType = dbContext.Model.FindEntityType(entityType)
-                           ?? throw new InvalidOperationException(
-                               $"Entity type {entityType.FullName} is not part of the current DbContext model.");
-
-        return efEntityType.FindProperty(propertyName)
-               ?? throw new InvalidOperationException(
-                   $"Property '{propertyName}' was not found on entity type {entityType.FullName}.");
-    }
-
-    private static IReadOnlyList<object> GetTrackedEntitiesByPropertyValues(
-        IReadOnlyList<EntityEntry> trackedEntries,
-        Type entityType,
-        string propertyName,
-        IReadOnlyCollection<object> values,
-        out HashSet<object> trackedValues)
-    {
-        trackedValues = [];
-
-        if (values.Count == 0)
-            return [];
-
-        var requestedValues = values.ToHashSet();
-        var result = new List<object>();
-
-        foreach (var entry in trackedEntries)
-        {
-            if (!entityType.IsAssignableFrom(entry.Metadata.ClrType)
-                || entry.Metadata.FindProperty(propertyName) is null)
-            {
-                continue;
-            }
-
-            var value = entry.Property(propertyName).CurrentValue;
-            if (value is null || !requestedValues.Contains(value))
-                continue;
-
-            trackedValues.Add(value);
-            result.Add(entry.Entity);
-        }
-
-        return result;
-    }
-
-    private static IReadOnlyList<object> Deduplicate(
-        DbContext dbContext,
-        Type entityType,
-        IReadOnlyList<object> entities)
-    {
-        if (entities.Count <= 1)
-            return entities;
-
-        var efEntityType = dbContext.Model.FindEntityType(entityType)
-                           ?? throw new InvalidOperationException(
-                               $"Entity type {entityType.FullName} is not part of the current DbContext model.");
-
-        var primaryKey = efEntityType.FindPrimaryKey();
-        if (primaryKey is null || primaryKey.Properties.Count == 0)
-            return entities;
-
-        var seen = new HashSet<string>();
-        var result = new List<object>();
-
-        foreach (var entity in entities)
-        {
-            var key = string.Join("|", primaryKey.Properties.Select(p =>
-                p.PropertyInfo?.GetValue(entity)?.ToString() ?? "<null>"));
-
-            if (seen.Add(key))
-                result.Add(entity);
-        }
-
-        return result;
     }
 }
