@@ -1,4 +1,3 @@
-using AuditLogLens.Restrictions.Internal;
 using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -7,10 +6,10 @@ using Xunit;
 
 namespace AuditLogLens.Tests;
 
-public class EfAuditWriterTests
+public class AuditExtensionsTests
 {
     [Fact]
-    public async Task SaveChangesAsync_WithConfiguredEfAuditWriter_WritesMappedAuditEntry()
+    public async Task AddAuditRestrictions_UsesConfiguredRestrictionsInsteadOfDefaultRules()
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync(TestContext.Current.CancellationToken);
@@ -18,32 +17,22 @@ public class EfAuditWriterTests
         var services = new ServiceCollection();
         services
             .AddAuditInfrastructure()
-            .AddEfAuditWriter<TestAuditEntry, TestAuditEntryMapper>();
-        services.AddSingleton<IAuditRestrictions, TestAuditRestrictions>();
+            .AddEfAuditWriter<TestAuditEntry, TestAuditEntryMapper>()
+            .AddAuditRestrictions<TestAuditRestrictions>();
 
         await using var serviceProvider = services.BuildServiceProvider();
 
         var optionsBuilder = new DbContextOptionsBuilder<AuditTestDbContext>()
             .UseSqlite(connection);
         optionsBuilder.AddAuditInterceptor(serviceProvider);
-        var options = optionsBuilder.Options;
 
-        await using var db = new AuditTestDbContext(options);
+        await using var db = new AuditTestDbContext(optionsBuilder.Options);
         await db.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
 
-        db.AllowedEntities.Add(new AllowedEntity
-        {
-            Name = "John",
-            Secret = "hidden"
-        });
+        db.ForbiddenEntities.Add(new ForbiddenEntity { Value = "ignored" });
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var auditEntry = await db.TestAuditEntries.SingleAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal(nameof(AllowedEntity), auditEntry.TableName);
-        Assert.Equal(nameof(EntityState.Added), auditEntry.State);
-        Assert.Equal("John", auditEntry.NewName);
-        Assert.True(int.Parse(auditEntry.EntityId!) > 0);
+        Assert.Empty(await db.TestAuditEntries.ToListAsync(TestContext.Current.CancellationToken));
     }
 }
