@@ -151,6 +151,8 @@ AuditLogLens batches enrichment loads across all changes first. This helps avoid
 Start here:
 
 - [Getting Started](docs/getting-started.md)
+- [Documentation Index](docs/README.md)
+- [Recipes](docs/recipes.md)
 - [Enrichment](docs/enrichment.md)
 - [Restrictions](docs/restrictions.md)
 - [Writing Audit Records](docs/writing.md)
