@@ -1,12 +1,15 @@
 using System.Runtime.CompilerServices;
 using System.Transactions;
-using AuditLogLens.Abstractions;
+using AuditLogLens.Detection;
+using AuditLogLens.Detection.Internal;
+using AuditLogLens.Enrichment.Internal;
+using AuditLogLens.Writing.Internal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace AuditLogLens.Interceptors;
 
-public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
+internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
 {
     private readonly IAuditChangeDetector _changeDetector;
     private readonly IAuditEnricher _enricher;

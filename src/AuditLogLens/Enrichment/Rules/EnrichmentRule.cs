@@ -1,6 +1,7 @@
-using AuditLogLens.Enrichment.Loading;
+using AuditLogLens.Enrichment.Context;
+using AuditLogLens.Enrichment.Internal.Loading;
 
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Rules;
 
 public abstract class EnrichmentRule
 {

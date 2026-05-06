@@ -1,4 +1,4 @@
-using AuditLogLens.Abstractions;
+using AuditLogLens.Restrictions.Internal;
 using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

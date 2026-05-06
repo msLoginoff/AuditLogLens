@@ -1,10 +1,10 @@
-using AuditLogLens.Abstractions;
-using AuditLogLens.Enrichment;
-using AuditLogLens.Enrichment.Domain;
-using AuditLogLens.Enrichment.EntityEnrichers;
+using AuditLogLens.Detection.Internal;
+using AuditLogLens.Enrichment.Internal;
+using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Interceptors;
-using AuditLogLens.Legacy;
-using AuditLogLens.Writer;
+using AuditLogLens.Restrictions;
+using AuditLogLens.Restrictions.Internal;
+using AuditLogLens.Writing.Internal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -54,6 +54,15 @@ public static class AuditExtensions
     {
         services.AddScoped<IAuditEntryMapper<TAuditEntry>, TAuditEntryMapper>();
         services.AddScoped<IAuditWriter, EfAuditWriter<TAuditEntry>>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddAuditRestrictions<TAuditRestrictions>(
+        this IServiceCollection services)
+        where TAuditRestrictions : AuditRestrictionsBase
+    {
+        services.Replace(ServiceDescriptor.Singleton<IAuditRestrictions, TAuditRestrictions>());
 
         return services;
     }

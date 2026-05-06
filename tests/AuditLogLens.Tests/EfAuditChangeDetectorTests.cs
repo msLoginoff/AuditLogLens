@@ -1,4 +1,4 @@
-using AuditLogLens.Legacy;
+using AuditLogLens.Detection.Internal;
 using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

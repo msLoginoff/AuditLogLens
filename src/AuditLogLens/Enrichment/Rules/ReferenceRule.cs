@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Reflection;
-using AuditLogLens.Enrichment.Loading;
-using AuditLogLens.Enrichment.Rules;
+using AuditLogLens.Enrichment.Context;
+using AuditLogLens.Enrichment.Internal.Loading;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Rules;
 
 public sealed class ReferenceRule : EnrichmentRule
 {

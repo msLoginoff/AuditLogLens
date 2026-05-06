@@ -1,7 +1,6 @@
-using AuditLogLens.Enrichment.Context;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Context;
 
 public sealed class AuditEnrichmentContext
 {

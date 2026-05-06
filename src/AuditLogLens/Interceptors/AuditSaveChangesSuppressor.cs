@@ -1,6 +1,6 @@
 namespace AuditLogLens.Interceptors;
 
-public sealed class AuditSaveChangesSuppressor
+internal sealed class AuditSaveChangesSuppressor
 {
     // Inspired by Microsoft.Extensions.Logging.LoggerExternalScopeProvider:
     // https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Logging.Abstractions/src/LoggerExternalScopeProvider.cs

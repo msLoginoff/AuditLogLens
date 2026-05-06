@@ -1,3 +1,4 @@
+using AuditLogLens.Restrictions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
