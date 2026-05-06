@@ -48,8 +48,7 @@ public abstract class AuditRestrictionsBase : IAuditRestrictions
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
 
-        return _rulesDictionary.Value.Count == 0
-               || _rulesDictionary.Value.ContainsKey(tableName);
+        return _rulesDictionary.Value.ContainsKey(tableName);
     }
 
     public virtual bool IsAllowedProperty(
@@ -58,11 +57,6 @@ public abstract class AuditRestrictionsBase : IAuditRestrictions
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
         ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
-
-        if (_rulesDictionary.Value.Count == 0)
-        {
-            return true;
-        }
 
         return _rulesDictionary.Value.TryGetValue(tableName, out var forbiddenProperties)
                && !forbiddenProperties.Contains(propertyName);

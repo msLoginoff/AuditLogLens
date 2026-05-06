@@ -1,4 +1,5 @@
 using AuditLogLens.Detection.Internal;
+using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Interceptors;
@@ -63,6 +64,15 @@ public static class AuditExtensions
         where TAuditRestrictions : AuditRestrictionsBase
     {
         services.Replace(ServiceDescriptor.Singleton<IAuditRestrictions, TAuditRestrictions>());
+
+        return services;
+    }
+
+    public static IServiceCollection AddAuditEnricher<TEnricher>(
+        this IServiceCollection services)
+        where TEnricher : AuditEntityEnricherBase
+    {
+        services.AddScoped<IAuditEntityEnricher, TEnricher>();
 
         return services;
     }

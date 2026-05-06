@@ -9,6 +9,33 @@ namespace AuditLogLens.Tests;
 public class AuditExtensionsTests
 {
     [Fact]
+    public async Task AddAuditInfrastructure_WithoutConfiguredRules_DoesNotAuditAnything()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+
+        var services = new ServiceCollection();
+        services
+            .AddAuditInfrastructure()
+            .AddEfAuditWriter<TestAuditEntry, TestAuditEntryMapper>();
+
+        await using var serviceProvider = services.BuildServiceProvider();
+
+        var optionsBuilder = new DbContextOptionsBuilder<AuditTestDbContext>()
+            .UseSqlite(connection);
+        optionsBuilder.AddAuditInterceptor(serviceProvider);
+
+        await using var db = new AuditTestDbContext(optionsBuilder.Options);
+        await db.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+
+        db.AllowedEntities.Add(new AllowedEntity { Name = "NotAuditedByDefault" });
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(await db.TestAuditEntries.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task AddAuditRestrictions_UsesConfiguredRestrictionsInsteadOfDefaultRules()
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
