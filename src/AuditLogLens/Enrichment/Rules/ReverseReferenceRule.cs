@@ -14,12 +14,8 @@ public sealed class ReverseReferenceRule : EnrichmentRule
 
     internal override EntityLoadRequest? BuildLoadRequest(IReadOnlyList<AuditChange> changes)
     {
-        var values = changes
-            .Select(SourceKeySelector)
-            .Where(x => x is not null)
-            .Cast<object>()
-            .Distinct()
-            .ToList();
+        var values = EnrichmentValueCollector.DistinctNonNull(
+            changes.Select(SourceKeySelector));
 
         return values.Count > 0
             ? new EntityLoadRequest
@@ -34,7 +30,7 @@ public sealed class ReverseReferenceRule : EnrichmentRule
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
         var loadedEntities = context.GetLoadedEntities(TargetEntityType, TargetForeignKeyPropertyName);
-        var entitiesByForeignKey = BuildEntityLookup(loadedEntities);
+        var entitiesByForeignKey = LoadedEntityLookup.ManyByKey(loadedEntities, TargetForeignKeySelector);
 
         foreach (var change in changes)
         {
@@ -47,27 +43,5 @@ public sealed class ReverseReferenceRule : EnrichmentRule
 
             Map(change, related, context.GetBagForChange(change));
         }
-    }
-
-    private Dictionary<object, List<object>> BuildEntityLookup(IReadOnlyList<object> loadedEntities)
-    {
-        var result = new Dictionary<object, List<object>>();
-
-        foreach (var entity in loadedEntities)
-        {
-            var foreignKey = TargetForeignKeySelector(entity);
-            if (foreignKey is null)
-                continue;
-
-            if (!result.TryGetValue(foreignKey, out var related))
-            {
-                related = [];
-                result[foreignKey] = related;
-            }
-
-            related.Add(entity);
-        }
-
-        return result;
     }
 }

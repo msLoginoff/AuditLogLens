@@ -21,16 +21,12 @@ public sealed class ReferenceRule : EnrichmentRule
 
     internal override EntityLoadRequest? BuildLoadRequest(IReadOnlyList<AuditChange> changes)
     {
-        var values = changes
-            .SelectMany(change =>
+        var values = EnrichmentValueCollector.DistinctNonNull(
+            changes.SelectMany(change =>
             {
                 var (oldFk, newFk) = ResolveForeignKeys(change);
                 return new[] { oldFk, newFk };
-            })
-            .Where(x => x is not null)
-            .Cast<object>()
-            .Distinct()
-            .ToList();
+            }));
 
         return values.Count > 0
             ? new EntityLoadRequest
@@ -45,7 +41,7 @@ public sealed class ReferenceRule : EnrichmentRule
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
         var loadedEntities = context.GetLoadedEntities(TargetEntityType, TargetKeyPropertyName);
-        var entitiesByKey = BuildEntityLookup(loadedEntities);
+        var entitiesByKey = LoadedEntityLookup.OneByKey(loadedEntities, GetKeyValue);
 
         foreach (var change in changes)
         {
@@ -63,20 +59,6 @@ public sealed class ReferenceRule : EnrichmentRule
                     context.GetBagForChange(change).SetNew(FieldName, ValueSelector(newTarget));
             }
         }
-    }
-
-    private Dictionary<object, object> BuildEntityLookup(IReadOnlyList<object> loadedEntities)
-    {
-        var result = new Dictionary<object, object>();
-
-        foreach (var entity in loadedEntities)
-        {
-            var key = GetKeyValue(entity);
-            if (key is null || !result.TryAdd(key, entity))
-                continue;
-        }
-
-        return result;
     }
 
     private (object? oldFk, object? newFk) ResolveForeignKeys(AuditChange change)

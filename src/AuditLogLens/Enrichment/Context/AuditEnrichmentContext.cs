@@ -5,6 +5,7 @@ namespace AuditLogLens.Enrichment;
 public sealed class AuditEnrichmentContext
 {
     private readonly Dictionary<AuditChange, AuditEnrichmentBag> _bags = new();
+    private readonly Dictionary<Type, IReadOnlyList<AuditChange>> _changesByEntityType;
     private readonly Dictionary<(Type EntityType, string PropertyName), List<object>> _loadedEntities = new();
 
     public AuditEnrichmentContext(
@@ -16,6 +17,9 @@ public sealed class AuditEnrichmentContext
 
         Changes = changes;
         DbContext = dbContext;
+        _changesByEntityType = changes
+            .GroupBy(x => x.EntityType)
+            .ToDictionary(x => x.Key, x => (IReadOnlyList<AuditChange>)x.ToList());
 
         foreach (var change in changes)
         {
@@ -27,10 +31,14 @@ public sealed class AuditEnrichmentContext
 
     public DbContext DbContext { get; }
 
-    public IEnumerable<AuditChange> GetChangesOfType(Type entityType)
+    public IReadOnlyList<Type> EntityTypes => _changesByEntityType.Keys.ToList();
+
+    public IReadOnlyList<AuditChange> GetChangesOfType(Type entityType)
     {
         ArgumentNullException.ThrowIfNull(entityType);
-        return Changes.Where(x => x.EntityType == entityType);
+        return _changesByEntityType.TryGetValue(entityType, out var changes)
+            ? changes
+            : Array.Empty<AuditChange>();
     }
 
     public AuditEnrichmentBag GetBagForChange(AuditChange change)
