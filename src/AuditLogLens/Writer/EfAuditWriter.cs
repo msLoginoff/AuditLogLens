@@ -29,9 +29,16 @@ public sealed class EfAuditWriter<TAuditEntry> : IAuditWriter
         if (changes.Count == 0)
             return;
 
-        var mapper = _mappers.FirstOrDefault(x => x.CanMap(dbContext))
+        var mapper = _mappers.LastOrDefault(x => x.CanMap(dbContext))
                      ?? throw new InvalidOperationException(
                          $"No audit entry mapper for {typeof(TAuditEntry).FullName} can map {dbContext.GetType().FullName}.");
+
+        if (dbContext.Model.FindEntityType(typeof(TAuditEntry)) is null)
+        {
+            throw new InvalidOperationException(
+                $"Audit entry type {typeof(TAuditEntry).FullName} is not part of the EF model for {dbContext.GetType().FullName}. " +
+                "Add it to the DbContext model or configure another audit writer.");
+        }
 
         var auditEntries = changes
             .Select(change => mapper.Map(change, dbContext))

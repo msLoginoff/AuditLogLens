@@ -6,6 +6,7 @@ using AuditLogLens.Legacy;
 using AuditLogLens.Writer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AuditLogLens;
 
@@ -24,7 +25,8 @@ public static class AuditExtensions
         services.AddScoped<AuditEntityEnricherRegistry>();
         services.AddScoped<IAuditChangeDetector, EfAuditChangeDetector>();
         services.AddScoped<IAuditEnricher, AuditEnrichmentFacade>();
-        services.AddScoped<IAuditWriter, UnconfiguredAuditWriter>();
+        services.TryAddScoped<IAuditEntryMapper<AuditLogLensEntry>, DefaultAuditLogLensEntryMapper>();
+        services.TryAddScoped<IAuditWriter, EfAuditWriter<AuditLogLensEntry>>();
         services.AddSingleton<AuditSaveChangesSuppressor>();
         services.AddScoped<AuditSaveChangesInterceptor>();
 
