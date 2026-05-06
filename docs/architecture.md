@@ -6,6 +6,15 @@ AuditLogLens is split into four stages.
 Detect -> Enrich -> Map -> Write
 ```
 
+```mermaid
+flowchart LR
+    SaveChanges["DbContext.SaveChanges"] --> Interceptor["AuditSaveChangesInterceptor"]
+    Interceptor --> Detect["Detect changes"]
+    Detect --> Enrich["Enrich changes"]
+    Enrich --> Map["Map to audit entity"]
+    Map --> Write["Write audit records"]
+```
+
 ## Detect
 
 The detector reads EF Core `ChangeTracker` entries before `SaveChanges`.
@@ -43,11 +52,11 @@ This avoids loading the same reference data separately for every audit change.
 
 ## Map
 
-Mapping is application-owned.
+Mapping can be default or application-owned.
 
-AuditLogLens gives you `AuditChange`; your `IAuditEntryMapper<TAuditEntry>` creates the real audit entity.
+By default, AuditLogLens maps `AuditChange` to `AuditLogLensEntry`.
 
-This keeps the library independent from application-specific audit table schemas.
+If the application needs its own table shape, its `IAuditEntryMapper<TAuditEntry>` creates the real audit entity. This keeps the library independent from application-specific audit table schemas.
 
 ## Write
 
@@ -68,6 +77,8 @@ The public API is intentionally centered on the types users write directly:
 - `AuditOptions`
 - `AuditWriteMode`
 - `AuditChange`
+- `AuditLogLensEntry`
+- `UseAuditLogLens()`
 - `IAuditEntryMapper<TAuditEntry>`
 - `AuditRestrictionsBase`
 - `AuditRestrictionRules`

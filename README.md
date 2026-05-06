@@ -2,7 +2,7 @@
 
 AuditLogLens is an EF Core audit pipeline for readable audit logs.
 
-It watches `SaveChanges`, creates `AuditChange` objects, enriches them with readable data, maps them to your audit entity, and writes audit records through EF Core.
+It watches `SaveChanges`, creates `AuditChange` objects, enriches them with readable data, maps them to an audit entity, and writes audit records through EF Core.
 
 The main idea is simple:
 
@@ -17,10 +17,11 @@ EF Core changes -> AuditChange -> enrichment -> mapper -> audit table
 ```csharp
 services
     .AddAuditInfrastructure()
-    .AddEfAuditWriter<AuditRecord, AuditRecordMapper>()
     .AddAuditRestrictions<ApplicationAuditRestrictions>()
     .AddAuditEnricher<AuditMetadataEnricher>();
 ```
+
+This uses the built-in `AuditLogLensEntry` audit entity and the built-in mapper.
 
 `AddAuditRestrictions<T>()` tells AuditLogLens which entities and properties should be audited.
 
@@ -35,7 +36,31 @@ services.AddDbContext<AppDbContext>((provider, options) =>
 });
 ```
 
-### 3. Map `AuditChange` to your audit entity
+### 3. Add the default audit entity to your EF model
+
+```csharp
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    base.OnModelCreating(modelBuilder);
+
+    modelBuilder.UseAuditLogLens();
+}
+```
+
+The default entity is [`AuditLogLensEntry`](src/AuditLogLens/AuditLogLensEntry.cs). It stores:
+
+- `Id`
+- `CreatedAtUtc`
+- `TableName`
+- `State`
+- `OldValuesJson`
+- `NewValuesJson`
+
+`UseAuditLogLens()` is defined in [`AuditLogLensModelBuilderExtensions`](src/AuditLogLens/AuditLogLensModelBuilderExtensions.cs).
+
+The default mapper is [`DefaultAuditLogLensEntryMapper`](src/AuditLogLens/Writing/Internal/DefaultAuditLogLensEntryMapper.cs). Use `AddEfAuditWriter<TAuditEntry, TMapper>()` only when you want your own audit table shape.
+
+### 4. Optional: map `AuditChange` to your own audit entity
 
 ```csharp
 public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
@@ -56,7 +81,16 @@ public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
 }
 ```
 
-### 4. Configure restrictions
+Register the custom writer instead of the default writer:
+
+```csharp
+services
+    .AddAuditInfrastructure()
+    .AddEfAuditWriter<AuditRecord, AuditRecordMapper>()
+    .AddAuditRestrictions<ApplicationAuditRestrictions>();
+```
+
+### 5. Configure restrictions
 
 ```csharp
 using AuditLogLens.Restrictions;
@@ -77,7 +111,7 @@ If no rules are configured, nothing is audited. This is intentional: audit loggi
 
 If at least one rule is configured, only listed entities are audited.
 
-### 5. Add readable enrichment
+### 6. Add readable enrichment
 
 Domain-level enrichment is the most common way to replace raw ids with readable values.
 
@@ -127,7 +161,8 @@ Start here:
 ## Main Concepts
 
 - `AuditChange` is the library-level representation of one audited change.
-- `IAuditEntryMapper<TAuditEntry>` maps `AuditChange` to your audit entity.
+- `AuditLogLensEntry` is the built-in audit entity for fast setup.
+- `IAuditEntryMapper<TAuditEntry>` maps `AuditChange` to your custom audit entity.
 - `AuditRestrictionsBase` controls which entities and properties are audited.
 - `IHasAuditEnrichmentConfig<TSelf>` adds declarative enrichment rules near the domain entity.
 - `AuditEntityEnricherBase` is the base class for application-level enrichment that does not belong to one domain entity.

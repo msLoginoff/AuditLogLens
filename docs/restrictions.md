@@ -87,7 +87,6 @@ protected override bool ShouldAuditEntry(EntityEntry entry)
 ```csharp
 services
     .AddAuditInfrastructure()
-    .AddEfAuditWriter<AuditRecord, AuditRecordMapper>()
     .AddAuditRestrictions<ApplicationAuditRestrictions>();
 ```
 

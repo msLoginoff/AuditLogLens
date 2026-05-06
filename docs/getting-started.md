@@ -7,15 +7,16 @@ This page shows the smallest useful AuditLogLens setup.
 ```csharp
 services
     .AddAuditInfrastructure()
-    .AddEfAuditWriter<AuditRecord, AuditRecordMapper>()
     .AddAuditRestrictions<ApplicationAuditRestrictions>();
 ```
 
 What this does:
 
 - `AddAuditInfrastructure()` registers the detection, enrichment, writer, and interceptor services.
-- `AddEfAuditWriter<TAuditEntry, TMapper>()` tells AuditLogLens what EF entity should be written as the audit record.
+- The default writer stores audit records as `AuditLogLensEntry`.
 - `AddAuditRestrictions<T>()` tells AuditLogLens what should be audited.
+
+You do not need a custom mapper or a custom audit entity for the first setup.
 
 ## 2. Add the Interceptor to Your DbContext
 
@@ -32,9 +33,9 @@ AuditLogLens uses an EF Core `SaveChangesInterceptor`.
 
 No `DbContext.SaveChanges` override is required for the basic setup.
 
-## 3. Add the Audit Entity to Your Model
+## 3. Add the Default Audit Entity to Your Model
 
-If you use the default `AuditLogLensEntry`, add it in `OnModelCreating`:
+Add the built-in [`AuditLogLensEntry`](../src/AuditLogLens/AuditLogLensEntry.cs) entity in `OnModelCreating`:
 
 ```csharp
 protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -45,7 +46,33 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 }
 ```
 
-If you use your own audit entity, configure it as a normal EF entity.
+By default, it uses the `AuditLogLensEntries` table.
+
+The built-in entity has this shape:
+
+```csharp
+public sealed class AuditLogLensEntry
+{
+    public Guid Id { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public string TableName { get; set; } = null!;
+    public string State { get; set; } = null!;
+    public string? OldValuesJson { get; set; }
+    public string? NewValuesJson { get; set; }
+}
+```
+
+You can change the table name or schema:
+
+```csharp
+modelBuilder.UseAuditLogLens(tableName: "AuditEntries", schema: "audit");
+```
+
+`UseAuditLogLens()` is defined in [`AuditLogLensModelBuilderExtensions`](../src/AuditLogLens/AuditLogLensModelBuilderExtensions.cs). The default mapper is [`DefaultAuditLogLensEntryMapper`](../src/AuditLogLens/Writing/Internal/DefaultAuditLogLensEntryMapper.cs).
+
+## 4. Optional: Use Your Own Audit Entity
+
+If you use your own audit entity, configure it as a normal EF entity:
 
 ```csharp
 public sealed class AuditRecord
@@ -59,7 +86,7 @@ public sealed class AuditRecord
 }
 ```
 
-## 4. Create a Mapper
+Then create a mapper:
 
 ```csharp
 public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
@@ -81,6 +108,15 @@ public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
 ```
 
 `CanMap` is useful when the same service provider contains more than one `DbContext`.
+
+Register the custom writer:
+
+```csharp
+services
+    .AddAuditInfrastructure()
+    .AddEfAuditWriter<AuditRecord, AuditRecordMapper>()
+    .AddAuditRestrictions<ApplicationAuditRestrictions>();
+```
 
 ## 5. Create Restrictions
 
