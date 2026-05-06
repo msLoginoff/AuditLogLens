@@ -1,4 +1,6 @@
-namespace AuditLogLens.Enrichment;
+using AuditLogLens.Enrichment.Planning;
+
+namespace AuditLogLens.Enrichment.EntityEnrichers;
 
 public abstract class AuditEntityEnricherBase : IAuditEntityEnricher
 {

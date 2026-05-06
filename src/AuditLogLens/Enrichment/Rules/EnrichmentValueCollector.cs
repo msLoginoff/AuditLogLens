@@ -1,4 +1,4 @@
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Rules;
 
 internal static class EnrichmentValueCollector
 {

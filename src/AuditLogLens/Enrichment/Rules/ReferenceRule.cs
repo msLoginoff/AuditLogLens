@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using AuditLogLens.Enrichment.Loading;
+using AuditLogLens.Enrichment.Rules;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Enrichment;

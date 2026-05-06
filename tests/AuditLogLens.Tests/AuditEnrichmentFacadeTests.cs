@@ -1,5 +1,7 @@
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Domain;
+using AuditLogLens.Enrichment.EntityEnrichers;
+using AuditLogLens.Enrichment.Planning;
 using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

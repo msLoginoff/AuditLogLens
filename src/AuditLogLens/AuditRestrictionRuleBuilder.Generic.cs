@@ -54,8 +54,10 @@ public sealed class AuditRestrictionRuleBuilder<TEntity>
             return memberExpression;
         }
 
-        if (expression is UnaryExpression unaryExpression
-            && unaryExpression.NodeType is ExpressionType.Convert or ExpressionType.ConvertChecked)
+        if (expression is UnaryExpression
+            {
+                NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked
+            } unaryExpression)
         {
             return UnwrapToMemberExpression(unaryExpression.Operand);
         }

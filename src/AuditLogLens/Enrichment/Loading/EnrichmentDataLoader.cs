@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Loading;
 
 internal static class EnrichmentDataLoader
 {

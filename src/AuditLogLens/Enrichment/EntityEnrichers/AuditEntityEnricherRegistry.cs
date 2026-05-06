@@ -1,4 +1,4 @@
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.EntityEnrichers;
 
 public sealed class AuditEntityEnricherRegistry
 {

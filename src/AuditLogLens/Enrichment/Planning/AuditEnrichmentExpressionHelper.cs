@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Planning;
 
 internal static class AuditEnrichmentExpressionHelper
 {

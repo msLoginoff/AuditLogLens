@@ -1,3 +1,4 @@
+using AuditLogLens.Enrichment.Context;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Enrichment;

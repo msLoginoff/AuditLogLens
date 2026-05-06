@@ -1,6 +1,7 @@
 using AuditLogLens.Abstractions;
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Domain;
+using AuditLogLens.Enrichment.EntityEnrichers;
 using AuditLogLens.Interceptors;
 using AuditLogLens.Legacy;
 using AuditLogLens.Writer;

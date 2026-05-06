@@ -1,3 +1,5 @@
+using AuditLogLens.Enrichment.Planning;
+
 namespace AuditLogLens.Enrichment.Domain;
 
 public interface IHasAuditEnrichmentConfig<TSelf>

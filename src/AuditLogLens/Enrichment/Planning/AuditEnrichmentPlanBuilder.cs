@@ -1,3 +1,5 @@
+using AuditLogLens.Enrichment.Planning;
+
 namespace AuditLogLens.Enrichment;
 
 public sealed class AuditEnrichmentPlanBuilder : IAuditEnrichmentPlanBuilder

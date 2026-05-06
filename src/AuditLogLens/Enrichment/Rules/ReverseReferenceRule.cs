@@ -1,3 +1,7 @@
+using AuditLogLens.Enrichment.Context;
+using AuditLogLens.Enrichment.Loading;
+using AuditLogLens.Enrichment.Rules;
+
 namespace AuditLogLens.Enrichment;
 
 public sealed class ReverseReferenceRule : EnrichmentRule

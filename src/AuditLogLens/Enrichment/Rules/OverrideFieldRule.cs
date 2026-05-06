@@ -1,3 +1,5 @@
+using AuditLogLens.Enrichment.Loading;
+
 namespace AuditLogLens.Enrichment;
 
 public sealed class OverrideFieldRule : EnrichmentRule
