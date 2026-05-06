@@ -76,6 +76,11 @@ public sealed class AuditEnrichmentContext
             {
                 change.NewValues[pair.Key] = pair.Value;
             }
+
+            foreach (var pair in bag.ExtraValues)
+            {
+                change.SetExtraValue(pair.Key, pair.Value);
+            }
         }
     }
 }
