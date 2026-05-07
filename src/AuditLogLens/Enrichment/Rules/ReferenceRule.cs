@@ -95,13 +95,10 @@ public sealed class ReferenceRule : EnrichmentRule
         bool hasNew, object? newFk,
         object? currentFk)
     {
-        if (currentFk is not null)
-            return (hasOld ? oldFk : currentFk, currentFk);
-
         if (hasOld || hasNew)
             return (hasOld ? oldFk : currentFk, hasNew ? newFk : currentFk);
 
-        return (currentFk, currentFk);
+        return (null, null);
     }
 
     private object? GetKeyValue(object entity)
