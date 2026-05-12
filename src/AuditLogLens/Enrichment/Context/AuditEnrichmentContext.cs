@@ -8,7 +8,7 @@ public sealed class AuditEnrichmentContext
     private readonly Dictionary<Type, IReadOnlyList<AuditChange>> _changesByEntityType;
     private readonly Dictionary<(Type EntityType, string PropertyName), List<object>> _loadedEntities = new();
 
-    public AuditEnrichmentContext(
+    internal AuditEnrichmentContext(
         IReadOnlyList<AuditChange> changes,
         DbContext dbContext)
     {
@@ -31,7 +31,7 @@ public sealed class AuditEnrichmentContext
 
     public DbContext DbContext { get; }
 
-    public IReadOnlyList<Type> EntityTypes => _changesByEntityType.Keys.ToList();
+    internal IReadOnlyList<Type> EntityTypes => _changesByEntityType.Keys.ToList();
 
     public IReadOnlyList<AuditChange> GetChangesOfType(Type entityType)
     {
@@ -47,7 +47,7 @@ public sealed class AuditEnrichmentContext
         return _bags[change];
     }
 
-    public void SetLoadedEntities(
+    internal void SetLoadedEntities(
         Type entityType,
         string propertyName,
         IEnumerable<object> entities)
@@ -69,7 +69,7 @@ public sealed class AuditEnrichmentContext
             : Array.Empty<object>();
     }
 
-    internal void FlushBagsToChanges()
+    internal void MergeBagsToChanges()
     {
         foreach (var change in Changes)
         {
@@ -89,6 +89,8 @@ public sealed class AuditEnrichmentContext
             {
                 change.SetExtraValue(pair.Key, pair.Value);
             }
+
+            bag.Clear();
         }
     }
 }

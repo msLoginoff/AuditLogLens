@@ -15,7 +15,7 @@ public abstract class AuditEntityEnricherBase : IAuditEntityEnricher
         ArgumentNullException.ThrowIfNull(context);
 
         await ApplyCustomAsync(context, cancellationToken).ConfigureAwait(false);
-        context.FlushBagsToChanges();
+        context.MergeBagsToChanges();
         await AfterApplyAsync(context, cancellationToken).ConfigureAwait(false);
     }
 

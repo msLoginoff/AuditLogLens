@@ -28,7 +28,7 @@ public class AuditExtraValuesTests
     }
 
     [Fact]
-    public void FlushBagsToChanges_CopiesOldNewAndExtraValuesIntoAuditChange()
+    public void MergeBagsToChanges_CopiesOldNewAndExtraValuesIntoAuditChange()
     {
         var change = new AuditChange
         {
@@ -45,10 +45,11 @@ public class AuditExtraValuesTests
         bag.SetNew("Name", "New");
         bag.SetExtraValue("PatientId", 42);
 
-        context.FlushBagsToChanges();
+        context.MergeBagsToChanges();
 
         Assert.Equal("Old", change.OldValues["Name"]);
         Assert.Equal("New", change.NewValues["Name"]);
         Assert.Equal(42, change.ExtraValues["PatientId"]);
+        Assert.False(bag.HasAnyValues());
     }
 }

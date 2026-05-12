@@ -49,7 +49,7 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
         foreach (var enricher in _enricherRegistry.GetDistinctEnrichersFor(entityTypes))
             await enricher.ApplyAsync(context, cancellationToken).ConfigureAwait(false);
 
-        context.FlushBagsToChanges();
+        context.MergeBagsToChanges();
     }
 
     private AuditEnrichmentPlan BuildCombinedPlan(Type entityType)

@@ -30,6 +30,13 @@ public sealed class AuditEnrichmentBag
         _extraValues[key] = value;
     }
 
+    internal void Clear()
+    {
+        _oldValues.Clear();
+        _newValues.Clear();
+        _extraValues.Clear();
+    }
+
     public bool TryGetOldValue(string key, out object? value)
     {
         return _oldValues.TryGetValue(key, out value);
@@ -45,7 +52,7 @@ public sealed class AuditEnrichmentBag
         return _extraValues.TryGetValue(key, out value);
     }
 
-    public bool HasAnyValues()
+    internal bool HasAnyValues()
     {
         return _oldValues.Count > 0 || _newValues.Count > 0 || _extraValues.Count > 0;
     }
