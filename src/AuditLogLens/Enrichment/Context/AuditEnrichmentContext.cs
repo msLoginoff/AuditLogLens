@@ -1,3 +1,4 @@
+using AuditLogLens.Detection.Internal;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Enrichment.Context;
@@ -7,10 +8,13 @@ public sealed class AuditEnrichmentContext
     private readonly Dictionary<AuditChange, AuditEnrichmentBag> _bags = new();
     private readonly Dictionary<Type, IReadOnlyList<AuditChange>> _changesByEntityType;
     private readonly Dictionary<(Type EntityType, string PropertyName), List<object>> _loadedEntities = new();
+    private readonly IReadOnlyList<AuditTrackedEntry> _trackedEntries;
+    private readonly Dictionary<Type, IReadOnlyList<AuditTrackedEntry>> _trackedEntriesByEntityType = new();
 
     internal AuditEnrichmentContext(
         IReadOnlyList<AuditChange> changes,
-        DbContext dbContext)
+        DbContext dbContext,
+        IReadOnlyList<AuditTrackedEntry>? trackedEntries = null)
     {
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(dbContext);
@@ -19,7 +23,13 @@ public sealed class AuditEnrichmentContext
         DbContext = dbContext;
         _changesByEntityType = changes
             .GroupBy(x => x.EntityType)
-            .ToDictionary(x => x.Key, IReadOnlyList<AuditChange> (x) => x.ToList());
+            .ToDictionary(x => x.Key, x => (IReadOnlyList<AuditChange>)x.ToList());
+        _trackedEntries = trackedEntries
+                          ?? dbContext.ChangeTracker
+                              .Entries()
+                              .Where(entry => entry.State != EntityState.Detached)
+                              .Select(entry => new AuditTrackedEntry(entry))
+                              .ToList();
 
         foreach (var change in changes)
         {
@@ -39,6 +49,23 @@ public sealed class AuditEnrichmentContext
         return _changesByEntityType.TryGetValue(entityType, out var changes)
             ? changes
             : [];
+    }
+
+    internal IReadOnlyList<AuditTrackedEntry> GetTrackedEntries(Type entityType)
+    {
+        ArgumentNullException.ThrowIfNull(entityType);
+
+        if (_trackedEntriesByEntityType.TryGetValue(entityType, out var entries))
+        {
+            return entries;
+        }
+
+        entries = _trackedEntries
+            .Where(entry => entityType.IsAssignableFrom(entry.EntityType))
+            .ToList();
+
+        _trackedEntriesByEntityType[entityType] = entries;
+        return entries;
     }
 
     public AuditEnrichmentBag GetBagForChange(AuditChange change)

@@ -1,3 +1,5 @@
+using AuditLogLens.Detection.Internal;
+using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Enrichment.Rules;
@@ -140,6 +142,69 @@ public class AuditEnrichmentFacadeTests
         Assert.Equal("New Readable", change.NewValues["RelatedName"]);
     }
 
+    [Fact]
+    public async Task EnrichAsync_AppliesCollectionRuleForTrackedRefChanges()
+    {
+        await using var db = CreateDbContext();
+
+        db.CollectionParentEntities.Add(new CollectionParentEntity { Id = 1, Name = "Parent" });
+        db.CollectionLookupEntities.AddRange(
+            new CollectionLookupEntity { Id = 10, Name = "Old Tag" },
+            new CollectionLookupEntity { Id = 20, Name = "New Tag" });
+        db.CollectionRefEntities.Add(new CollectionRefEntity
+        {
+            Id = 100,
+            ParentId = 1,
+            LookupId = 10
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var parent = db.CollectionParentEntities.Single();
+        parent.Name = "Changed";
+
+        var oldRef = db.CollectionRefEntities.Single();
+        db.CollectionRefEntities.Remove(oldRef);
+        db.CollectionRefEntities.Add(new CollectionRefEntity
+        {
+            ParentId = 1,
+            LookupId = 20
+        });
+
+        var change = new AuditChange
+        {
+            EntityType = typeof(CollectionParentEntity),
+            EntityId = parent.Id,
+            State = nameof(EntityState.Modified),
+            Entry = db.Entry(parent)
+        };
+        change.OldValues[nameof(CollectionParentEntity.Name)] = "Parent";
+        change.NewValues[nameof(CollectionParentEntity.Name)] = "Changed";
+
+        var trackedEntries = db.ChangeTracker
+            .Entries()
+            .Where(entry => entry.State != EntityState.Detached)
+            .Select(entry => new AuditTrackedEntry(entry))
+            .ToList();
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var enricher = new AuditEnrichmentFacade(
+            new TestDomainEnrichmentPlanProvider(),
+            new AuditEntityEnricherRegistry([]));
+
+        await enricher.EnrichAsync(
+            [change],
+            db,
+            trackedEntries,
+            TestContext.Current.CancellationToken);
+
+        var oldTags = Assert.IsAssignableFrom<IEnumerable<object?>>(change.OldValues["Tags"]);
+        var newTags = Assert.IsAssignableFrom<IEnumerable<object?>>(change.NewValues["Tags"]);
+
+        Assert.Equal(["Old Tag"], oldTags);
+        Assert.Equal(["New Tag"], newTags);
+    }
+
     private sealed class TestDomainEnrichmentPlanProvider : IAuditDomainEnrichmentPlanProvider
     {
         public AuditEnrichmentPlan GetPlan(Type entityType)
@@ -152,6 +217,22 @@ public class AuditEnrichmentFacadeTests
             if (entityType == typeof(SecondSourceEntity))
             {
                 return BuildReferencePlan(nameof(SecondSourceEntity.RelatedEntityId));
+            }
+
+            if (entityType == typeof(CollectionParentEntity))
+            {
+                var builder = new AuditEnrichmentPlanBuilder();
+                builder.Collection<CollectionParentEntity, CollectionRefEntity, CollectionLookupEntity, int, int>(
+                    "Tags",
+                    parent => parent.Id,
+                    reference => reference.ParentId,
+                    reference => reference.LookupId,
+                    lookup => lookup.Id,
+                    lookup => lookup.Name);
+
+                return new AuditEnrichmentPlan(
+                    rules: builder.Build().Rules,
+                    customSteps: []);
             }
 
             return AuditEnrichmentPlan.Empty;

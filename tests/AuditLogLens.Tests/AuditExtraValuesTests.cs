@@ -38,7 +38,7 @@ public class AuditExtraValuesTests
         using var db = new AuditTestDbContext(
             new DbContextOptionsBuilder<AuditTestDbContext>()
                 .Options);
-        var context = new AuditEnrichmentContext([change], db);
+        var context = new AuditEnrichmentContext([change], db, []);
 
         var bag = context.GetBagForChange(change);
         bag.SetOld("Name", "Old");

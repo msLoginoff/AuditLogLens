@@ -106,7 +106,12 @@ internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         {
             var changes = _changeDetector.DetectPostSaveChanges(dbContext, saveContext);
 
-            _enricher.EnrichAsync(changes, dbContext).GetAwaiter().GetResult();
+            _enricher.EnrichAsync(
+                    changes,
+                    dbContext,
+                    saveContext.TrackedEntries)
+                .GetAwaiter()
+                .GetResult();
 
             _writer.WriteAsync(changes, dbContext).GetAwaiter().GetResult();
 
@@ -150,7 +155,12 @@ internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         {
             var changes = _changeDetector.DetectPostSaveChanges(dbContext, saveContext);
 
-            await _enricher.EnrichAsync(changes, dbContext, cancellationToken).ConfigureAwait(false);
+            await _enricher.EnrichAsync(
+                    changes,
+                    dbContext,
+                    saveContext.TrackedEntries,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
             await _writer.WriteAsync(changes, dbContext, cancellationToken).ConfigureAwait(false);
 

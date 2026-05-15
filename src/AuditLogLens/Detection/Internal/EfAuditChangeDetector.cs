@@ -20,8 +20,14 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
         dbContext.ChangeTracker.DetectChanges();
 
         var saveContext = new AuditSaveContext();
+        var entries = dbContext.ChangeTracker
+            .Entries()
+            .Where(entry => entry.State != EntityState.Detached)
+            .ToList();
 
-        foreach (var entry in dbContext.ChangeTracker.Entries().Where(ShouldProcessEntry).ToList())
+        saveContext.CaptureTrackedEntries(entries);
+
+        foreach (var entry in entries.Where(ShouldProcessEntry))
         {
             var auditChange = CreateAuditChange(entry, isAfterSave: false);
 

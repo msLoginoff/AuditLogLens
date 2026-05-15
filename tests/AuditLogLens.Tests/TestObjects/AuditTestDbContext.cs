@@ -10,6 +10,9 @@ public sealed class AuditTestDbContext : DbContext
     }
 
     public DbSet<AllowedEntity> AllowedEntities => Set<AllowedEntity>();
+    public DbSet<CollectionLookupEntity> CollectionLookupEntities => Set<CollectionLookupEntity>();
+    public DbSet<CollectionParentEntity> CollectionParentEntities => Set<CollectionParentEntity>();
+    public DbSet<CollectionRefEntity> CollectionRefEntities => Set<CollectionRefEntity>();
     public DbSet<DomainConfiguredSourceEntity> DomainConfiguredSourceEntities => Set<DomainConfiguredSourceEntity>();
     public DbSet<ForbiddenEntity> ForbiddenEntities => Set<ForbiddenEntity>();
     public DbSet<FirstSourceEntity> FirstSourceEntities => Set<FirstSourceEntity>();

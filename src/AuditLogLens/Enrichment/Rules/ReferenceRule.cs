@@ -21,7 +21,9 @@ public sealed class ReferenceRule : EnrichmentRule
 
     public required Func<object, object?> ValueSelector { get; init; }
 
-    internal override EntityLoadRequest? BuildLoadRequest(IReadOnlyList<AuditChange> changes)
+    internal override EntityLoadRequest? BuildLoadRequest(
+        IReadOnlyList<AuditChange> changes,
+        AuditEnrichmentContext context)
     {
         var values = EnrichmentValueCollector.DistinctNonNull(
             changes.SelectMany(change =>

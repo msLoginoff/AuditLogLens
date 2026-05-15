@@ -47,6 +47,32 @@ builder.Reference<Visit, Doctor, Guid>(
     doctor => doctor.FullName);
 ```
 
+## Collection Enrichment
+
+Use collection enrichment for explicit join entities, such as `PatientTag`, `VisitResource`, or `UserRole`.
+
+```csharp
+builder.Collection<Patient, PatientTag, Tag, int, int>(
+    fieldName: "Tags",
+    parentKey: patient => patient.Id,
+    joinParentKey: join => join.PatientId,
+    joinItemKey: join => join.TagId,
+    itemKey: tag => tag.Id,
+    itemValueSelector: tag => tag.Name);
+```
+
+Terms:
+
+- `TSource`: the audited parent entity, for example `Patient`.
+- `TJoin`: the explicit join entity, for example `PatientTag`.
+- `TItem`: the readable item entity, for example `Tag`.
+
+Limitations in the current version:
+
+- EF Core implicit skip-navigation many-to-many relationships without a CLR join entity are not supported yet.
+- The parent audit change must already exist; collection enrichment does not yet create synthetic parent changes.
+- `itemValueSelector` should return a value with meaningful equality, such as `string`, `int`, a record, or an anonymous type. Collection values are de-duplicated with `Distinct()`.
+
 ## Application Enrichers
 
 Use an application enricher when the data does not belong to one domain entity, or when it depends on application services.

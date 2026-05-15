@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment.Context;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace AuditLogLens.Enrichment.Internal.Loading;
@@ -28,11 +28,6 @@ internal static class EnrichmentDataLoader
         if (loadRequests.Count == 0)
             return;
 
-        var trackedEntries = context.DbContext.ChangeTracker
-            .Entries()
-            .Where(x => x.State != EntityState.Detached)
-            .ToList();
-
         foreach (var group in loadRequests.GroupBy(r => (r.EntityType, r.PropertyName)))
         {
             var entityType = group.Key.EntityType;
@@ -44,8 +39,7 @@ internal static class EnrichmentDataLoader
 
             var property = GetRequiredEfProperty(context.DbContext, entityType, propertyName);
             var tracked = GetTrackedEntities(
-                trackedEntries,
-                entityType,
+                context.GetTrackedEntries(entityType),
                 propertyName,
                 values,
                 out var trackedValues);
@@ -118,8 +112,7 @@ internal static class EnrichmentDataLoader
     }
 
     private static IReadOnlyList<object> GetTrackedEntities(
-        IReadOnlyList<EntityEntry> trackedEntries,
-        Type entityType,
+        IReadOnlyList<AuditTrackedEntry> trackedEntries,
         string propertyName,
         IReadOnlyCollection<object> values,
         out HashSet<object> trackedValues)
@@ -134,13 +127,12 @@ internal static class EnrichmentDataLoader
 
         foreach (var entry in trackedEntries)
         {
-            if (!entityType.IsAssignableFrom(entry.Metadata.ClrType)
-                || entry.Metadata.FindProperty(propertyName) is null)
+            if (entry.Entry.Metadata.FindProperty(propertyName) is null)
             {
                 continue;
             }
 
-            var value = entry.Property(propertyName).CurrentValue;
+            var value = entry.Entry.Property(propertyName).CurrentValue;
             if (value is null || !requestedValues.Contains(value))
                 continue;
 

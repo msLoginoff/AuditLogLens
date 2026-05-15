@@ -1,3 +1,4 @@
+using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment.Context;
 using AuditLogLens.Enrichment.Internal.Loading;
 using AuditLogLens.Enrichment.Internal.Planning;
@@ -21,15 +22,17 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
     public async Task EnrichAsync(
         List<AuditChange> changes,
         DbContext dbContext,
+        IReadOnlyList<AuditTrackedEntry> trackedEntries,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(dbContext);
+        ArgumentNullException.ThrowIfNull(trackedEntries);
 
         if (changes.Count == 0)
             return;
 
-        var context = new AuditEnrichmentContext(changes, dbContext);
+        var context = new AuditEnrichmentContext(changes, dbContext, trackedEntries);
         var entityTypes = context.EntityTypes;
         var plansByEntityType = context.EntityTypes.ToDictionary(
             entityType => entityType,
@@ -50,6 +53,14 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
             await enricher.ApplyAsync(context, cancellationToken).ConfigureAwait(false);
 
         context.MergeBagsToChanges();
+    }
+
+    public Task EnrichAsync(
+        List<AuditChange> changes,
+        DbContext dbContext,
+        CancellationToken cancellationToken = default)
+    {
+        return EnrichAsync(changes, dbContext, [], cancellationToken);
     }
 
     private AuditEnrichmentPlan BuildCombinedPlan(Type entityType)
@@ -77,7 +88,7 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
 
             requests.AddRange(
                 plan.Rules
-                    .Select(rule => rule.BuildLoadRequest(changes))
+                    .Select(rule => rule.BuildLoadRequest(changes, context))
                     .OfType<EntityLoadRequest>());
         }
 

@@ -15,7 +15,9 @@ public sealed class ReverseReferenceRule : EnrichmentRule
 
     public required Action<AuditChange, IReadOnlyList<object>, AuditEnrichmentBag> Map { get; init; }
 
-    internal override EntityLoadRequest? BuildLoadRequest(IReadOnlyList<AuditChange> changes)
+    internal override EntityLoadRequest? BuildLoadRequest(
+        IReadOnlyList<AuditChange> changes,
+        AuditEnrichmentContext context)
     {
         var values = EnrichmentValueCollector.DistinctNonNull(
             changes.Select(SourceKeySelector));
