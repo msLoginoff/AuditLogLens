@@ -111,7 +111,7 @@ public class EfAuditChangeDetectorTests
     }
 
     [Fact]
-    public void DetectPreSaveChanges_WhenOnlyForbiddenPropertyChanged_DoesNotCreateAuditChange()
+    public void DetectPreSaveChanges_WhenOnlyForbiddenPropertyChanged_CreatesEmptyCandidate()
     {
         using var db = CreateDbContext();
         var detector = CreateDetector();
@@ -128,7 +128,11 @@ public class EfAuditChangeDetectorTests
 
         var saveContext = detector.DetectPreSaveChanges(db);
 
-        Assert.Empty(saveContext.PreSaveChanges);
+        var change = Assert.Single(saveContext.PreSaveChanges);
+
+        Assert.Equal(nameof(EntityState.Modified), change.State);
+        Assert.Empty(change.OldValues);
+        Assert.Empty(change.NewValues);
     }
 
     [Fact]

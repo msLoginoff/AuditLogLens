@@ -135,17 +135,7 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
             }
         }
 
-        if (!HasVisibleChanges(auditChange) && !HasTemporaryKey(entry))
-        {
-            return null;
-        }
-
         return auditChange;
-    }
-
-    private static bool HasVisibleChanges(AuditChange change)
-    {
-        return change.OldValues.Count > 0 || change.NewValues.Count > 0;
     }
 
     private static bool HasTemporaryKey(EntityEntry entry)

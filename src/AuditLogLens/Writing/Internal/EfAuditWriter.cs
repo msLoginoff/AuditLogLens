@@ -28,6 +28,13 @@ internal sealed class EfAuditWriter<TAuditEntry> : IAuditWriter
         if (changes.Count == 0)
             return;
 
+        var writableChanges = changes
+            .Where(HasAuditValues)
+            .ToList();
+
+        if (writableChanges.Count == 0)
+            return;
+
         var mapper = _mappers.LastOrDefault(x => x.CanMap(dbContext))
                      ?? throw new InvalidOperationException(
                          $"No audit entry mapper for {typeof(TAuditEntry).FullName} can map {dbContext.GetType().FullName}.");
@@ -39,7 +46,7 @@ internal sealed class EfAuditWriter<TAuditEntry> : IAuditWriter
                 "Add it to the DbContext model or configure another audit writer.");
         }
 
-        var auditEntries = changes
+        var auditEntries = writableChanges
             .Select(change => mapper.Map(change, dbContext))
             .OfType<TAuditEntry>()
             .ToList();
@@ -53,5 +60,10 @@ internal sealed class EfAuditWriter<TAuditEntry> : IAuditWriter
         {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private static bool HasAuditValues(AuditChange change)
+    {
+        return change.OldValues.Count > 0 || change.NewValues.Count > 0;
     }
 }

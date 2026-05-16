@@ -46,4 +46,83 @@ public class EfAuditWriterTests
         Assert.Equal("John", auditEntry.NewName);
         Assert.True(int.Parse(auditEntry.EntityId!) > 0);
     }
+
+    [Fact]
+    public async Task SaveChangesAsync_WhenOnlyIgnoredPropertyChanged_DoesNotWriteEmptyAuditEntry()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+
+        var services = new ServiceCollection();
+        services
+            .AddAuditInfrastructure()
+            .AddEfAuditWriter<TestAuditEntry, TestAuditEntryMapper>()
+            .AddAuditRestrictions<TestAuditRestrictions>();
+
+        await using var serviceProvider = services.BuildServiceProvider();
+
+        var optionsBuilder = new DbContextOptionsBuilder<AuditTestDbContext>()
+            .UseSqlite(connection);
+        optionsBuilder.AddAuditInterceptor(serviceProvider);
+        var options = optionsBuilder.Options;
+
+        await using var db = new AuditTestDbContext(options);
+        await db.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+
+        db.AllowedEntities.Add(new AllowedEntity
+        {
+            Name = "John",
+            Secret = "hidden"
+        });
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        db.TestAuditEntries.RemoveRange(db.TestAuditEntries);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var entity = await db.AllowedEntities.SingleAsync(TestContext.Current.CancellationToken);
+        entity.Secret = "changed";
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(await db.TestAuditEntries.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_WhenOnlyIgnoredPropertyChangedAndDefaultAuditModelIsNotConfigured_DoesNotThrow()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+
+        var plainOptions = new DbContextOptionsBuilder<AuditTestDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using (var seedDb = new AuditTestDbContext(plainOptions))
+        {
+            await seedDb.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+            seedDb.AllowedEntities.Add(new AllowedEntity
+            {
+                Name = "John",
+                Secret = "hidden"
+            });
+            await seedDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var services = new ServiceCollection();
+        services
+            .AddAuditInfrastructure()
+            .AddAuditRestrictions<TestAuditRestrictions>();
+
+        await using var serviceProvider = services.BuildServiceProvider();
+
+        var auditedOptionsBuilder = new DbContextOptionsBuilder<AuditTestDbContext>()
+            .UseSqlite(connection);
+        auditedOptionsBuilder.AddAuditInterceptor(serviceProvider);
+
+        await using var db = new AuditTestDbContext(auditedOptionsBuilder.Options);
+        var entity = await db.AllowedEntities.SingleAsync(TestContext.Current.CancellationToken);
+        entity.Secret = "changed";
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
 }
