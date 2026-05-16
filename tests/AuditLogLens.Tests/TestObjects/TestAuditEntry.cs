@@ -11,4 +11,6 @@ public sealed class TestAuditEntry
     public string? State { get; set; }
 
     public string? NewName { get; set; }
+
+    public string? NewTags { get; set; }
 }

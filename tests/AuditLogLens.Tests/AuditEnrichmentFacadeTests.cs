@@ -232,6 +232,31 @@ public class AuditEnrichmentFacadeTests
     }
 
     [Fact]
+    public async Task EnrichAsync_AppliesCollectionRuleForAddedParentWithGeneratedKeyAndJoinNavigation()
+    {
+        await using var db = CreateDbContext();
+
+        db.CollectionLookupEntities.Add(new CollectionLookupEntity { Id = 10, Name = "Generated Parent Tag" });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var parent = new CollectionParentEntity { Name = "Parent" };
+        parent.References.Add(new CollectionRefEntity { LookupId = 10 });
+        db.CollectionParentEntities.Add(parent);
+
+        var change = CreateParentChange(parent, db.Entry(parent), EntityState.Added);
+        var trackedEntries = CaptureTrackedEntries(db);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        change.EntityId = parent.Id;
+
+        await EnrichAsync(db, change, trackedEntries);
+
+        Assert.True(parent.Id > 0);
+        Assert.False(change.OldValues.ContainsKey("Tags"));
+        AssertCollectionValue(change.NewValues["Tags"], "Generated Parent Tag");
+    }
+
+    [Fact]
     public async Task EnrichAsync_AppliesCollectionRuleForDeletedParent()
     {
         await using var db = CreateDbContext();

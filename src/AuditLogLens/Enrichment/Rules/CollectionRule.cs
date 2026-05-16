@@ -28,15 +28,15 @@ public sealed class CollectionRule : EnrichmentRule
         IReadOnlyList<AuditChange> changes,
         AuditEnrichmentContext context)
     {
-        var parentKeys = GetParentChangesByKey(changes);
-        if (parentKeys.Count == 0)
+        var parentChanges = BuildParentChangeLookup(changes, context);
+        if (parentChanges.IsEmpty)
         {
             return null;
         }
 
         var itemKeys = EnrichmentValueCollector.DistinctNonNull(
-            GetRelevantJoinEntries(context, parentKeys)
-                .Select(GetJoinItemKey));
+            GetJoinMatches(context, parentChanges)
+                .Select(match => GetJoinItemKey(match.JoinEntry)));
 
         return itemKeys.Count > 0
             ? new EntityLoadRequest
@@ -50,8 +50,8 @@ public sealed class CollectionRule : EnrichmentRule
 
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
-        var parentKeys = GetParentChangesByKey(changes);
-        if (parentKeys.Count == 0)
+        var parentChanges = BuildParentChangeLookup(changes, context);
+        if (parentChanges.IsEmpty)
         {
             return;
         }
@@ -63,7 +63,7 @@ public sealed class CollectionRule : EnrichmentRule
             return;
         }
 
-        foreach (var group in GetCollectionItems(context, parentKeys, itemsByKey)
+        foreach (var group in GetCollectionItems(context, parentChanges, itemsByKey)
                      .GroupBy(item => (item.Change, item.Side)))
         {
             var values = group
@@ -89,71 +89,144 @@ public sealed class CollectionRule : EnrichmentRule
         }
     }
 
-    private Dictionary<object, AuditChange> GetParentChangesByKey(IReadOnlyList<AuditChange> changes)
+    private ParentChangeLookup BuildParentChangeLookup(
+        IReadOnlyList<AuditChange> changes,
+        AuditEnrichmentContext context)
     {
-        var result = new Dictionary<object, AuditChange>();
+        var byKey = new Dictionary<object, AuditChange>();
+        var byEntity = new Dictionary<object, AuditChange>(ReferenceEqualityComparer.Instance);
 
         foreach (var change in changes)
         {
             var key = GetParentKey(change);
             if (key is not null)
             {
-                result.TryAdd(key, change);
+                byKey.TryAdd(key, change);
+            }
+
+            if (change.Entry is not null)
+            {
+                byEntity.TryAdd(change.Entry.Entity, change);
             }
         }
 
-        return result;
+        AddPreSaveParentKeys(changes, context, byKey, byEntity);
+
+        return new ParentChangeLookup(
+            byKey,
+            byEntity,
+            FindParentNavigationName(changes, context));
     }
 
-    private IEnumerable<AuditTrackedEntry> GetRelevantJoinEntries(
+    private IEnumerable<CollectionJoinMatch> GetJoinMatches(
         AuditEnrichmentContext context,
-        IReadOnlyDictionary<object, AuditChange> parentKeys)
+        ParentChangeLookup parentChanges)
     {
-        foreach (var entry in context.GetTrackedEntries(JoinEntityType))
+        foreach (var joinEntry in context.GetTrackedEntries(JoinEntityType))
         {
-            var parentKey = GetJoinParentKey(entry);
-            if (parentKey is null || !parentKeys.TryGetValue(parentKey, out var parentChange))
+            if (!TryGetParentChange(joinEntry, parentChanges, out var parentChange))
             {
                 continue;
             }
 
-            if (ResolveSide(parentChange, entry.State) is not null)
+            var side = ResolveSide(parentChange, joinEntry.State);
+            if (side is not null)
             {
-                yield return entry;
+                yield return new CollectionJoinMatch(joinEntry, parentChange, side.Value);
             }
         }
     }
 
     private IEnumerable<CollectionItem> GetCollectionItems(
         AuditEnrichmentContext context,
-        IReadOnlyDictionary<object, AuditChange> parentKeys,
+        ParentChangeLookup parentChanges,
         IReadOnlyDictionary<object, object> itemsByKey)
     {
-        foreach (var joinEntry in GetRelevantJoinEntries(context, parentKeys))
+        foreach (var match in GetJoinMatches(context, parentChanges))
         {
-            var parentKey = GetJoinParentKey(joinEntry);
-            if (parentKey is null || !parentKeys.TryGetValue(parentKey, out var change))
-            {
-                continue;
-            }
-
-            var side = ResolveSide(change, joinEntry.State);
-            if (side is null)
-            {
-                continue;
-            }
-
-            var itemKey = GetJoinItemKey(joinEntry);
+            var itemKey = GetJoinItemKey(match.JoinEntry);
             if (itemKey is null || !itemsByKey.TryGetValue(itemKey, out var itemEntity))
             {
                 continue;
             }
 
             yield return new CollectionItem(
-                change,
-                side.Value,
+                match.Change,
+                match.Side,
                 ItemValueSelector(itemEntity));
         }
+    }
+
+    private void AddPreSaveParentKeys(
+        IReadOnlyList<AuditChange> changes,
+        AuditEnrichmentContext context,
+        Dictionary<object, AuditChange> byKey,
+        IReadOnlyDictionary<object, AuditChange> byEntity)
+    {
+        foreach (var parentEntry in changes
+                     .Select(change => change.EntityType)
+                     .Distinct()
+                     .SelectMany(context.GetTrackedEntries))
+        {
+            if (!byEntity.TryGetValue(parentEntry.Entity, out var change))
+            {
+                continue;
+            }
+
+            var key = parentEntry.GetCurrentValue(ParentKeyPropertyName);
+            if (key is not null)
+            {
+                byKey.TryAdd(key, change);
+            }
+        }
+    }
+
+    private bool TryGetParentChange(
+        AuditTrackedEntry joinEntry,
+        ParentChangeLookup parentChanges,
+        out AuditChange parentChange)
+    {
+        if (parentChanges.ParentNavigationName is not null)
+        {
+            var parentEntity = joinEntry.Entry.Member(parentChanges.ParentNavigationName).CurrentValue;
+            if (parentEntity is not null
+                && parentChanges.ByEntity.TryGetValue(parentEntity, out parentChange!))
+            {
+                return true;
+            }
+        }
+
+        var parentKey = GetJoinParentKey(joinEntry);
+        if (parentKey is not null
+            && parentChanges.ByKey.TryGetValue(parentKey, out parentChange!))
+        {
+            return true;
+        }
+
+        parentChange = null!;
+        return false;
+    }
+
+    private string? FindParentNavigationName(
+        IReadOnlyList<AuditChange> changes,
+        AuditEnrichmentContext context)
+    {
+        var parentEntityTypes = changes
+            .Select(change => change.EntityType)
+            .Distinct()
+            .ToList();
+
+        var joinEntityType = context.DbContext.Model.FindEntityType(JoinEntityType);
+        var foreignKey = joinEntityType?
+            .GetForeignKeys()
+            .FirstOrDefault(foreignKey =>
+                foreignKey.DependentToPrincipal is not null
+                && foreignKey.Properties.Count == 1
+                && foreignKey.Properties[0].Name == JoinParentKeyPropertyName
+                && parentEntityTypes.Any(parentType =>
+                    foreignKey.PrincipalEntityType.ClrType.IsAssignableFrom(parentType)));
+
+        return foreignKey?.DependentToPrincipal?.Name;
     }
 
     private CollectionSide? ResolveSide(AuditChange parentChange, EntityState joinState)
@@ -214,4 +287,17 @@ public sealed class CollectionRule : EnrichmentRule
         AuditChange Change,
         CollectionSide Side,
         object? Value);
+
+    private sealed record CollectionJoinMatch(
+        AuditTrackedEntry JoinEntry,
+        AuditChange Change,
+        CollectionSide Side);
+
+    private sealed record ParentChangeLookup(
+        IReadOnlyDictionary<object, AuditChange> ByKey,
+        IReadOnlyDictionary<object, AuditChange> ByEntity,
+        string? ParentNavigationName)
+    {
+        public bool IsEmpty => ByKey.Count == 0 && ByEntity.Count == 0;
+    }
 }

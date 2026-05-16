@@ -136,6 +136,31 @@ public class EfAuditChangeDetectorTests
     }
 
     [Fact]
+    public void DetectPreSaveChanges_WhenModifiedPropertiesHaveEqualValues_CreatesEmptyCandidate()
+    {
+        using var db = CreateDbContext();
+        var detector = CreateDetector();
+
+        db.AllowedEntities.Add(new AllowedEntity
+        {
+            Name = "John",
+            Secret = "s1"
+        });
+        db.SaveChanges();
+
+        var entity = db.AllowedEntities.Single();
+        db.Entry(entity).State = EntityState.Modified;
+
+        var saveContext = detector.DetectPreSaveChanges(db);
+
+        var change = Assert.Single(saveContext.PreSaveChanges);
+
+        Assert.Equal(nameof(EntityState.Modified), change.State);
+        Assert.Empty(change.OldValues);
+        Assert.Empty(change.NewValues);
+    }
+
+    [Fact]
     public void DetectPreSaveChanges_ForSpecialDeleteEntityDelete_SkipsIt()
     {
         using var db = CreateDbContext();

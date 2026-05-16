@@ -129,6 +129,11 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
                         continue;
                     }
 
+                    if (Equals(property.OriginalValue, property.CurrentValue))
+                    {
+                        continue;
+                    }
+
                     auditChange.OldValues[propertyName] = property.OriginalValue;
                     auditChange.NewValues[propertyName] = property.CurrentValue;
                     break;

@@ -125,4 +125,50 @@ public class EfAuditWriterTests
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
+
+    [Fact]
+    public async Task SaveChangesAsync_WhenOnlyCollectionChanged_WritesEnrichedAuditEntry()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+
+        var services = new ServiceCollection();
+        services
+            .AddAuditInfrastructure()
+            .AddEfAuditWriter<TestAuditEntry, TestAuditEntryMapper>()
+            .AddAuditRestrictions<TestAuditRestrictions>();
+
+        await using var serviceProvider = services.BuildServiceProvider();
+
+        var optionsBuilder = new DbContextOptionsBuilder<AuditTestDbContext>()
+            .UseSqlite(connection);
+        optionsBuilder.AddAuditInterceptor(serviceProvider);
+
+        await using var db = new AuditTestDbContext(optionsBuilder.Options);
+        await db.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+
+        db.CollectionLookupEntities.Add(new CollectionLookupEntity { Id = 10, Name = "Tracked Tag" });
+        db.CollectionParentEntities.Add(new CollectionParentEntity { Name = "Parent" });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        db.TestAuditEntries.RemoveRange(db.TestAuditEntries);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var parent = await db.CollectionParentEntities.SingleAsync(TestContext.Current.CancellationToken);
+        db.CollectionRefEntities.Add(new CollectionRefEntity
+        {
+            ParentId = parent.Id,
+            LookupId = 10
+        });
+        db.Entry(parent).State = EntityState.Modified;
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var auditEntry = await db.TestAuditEntries.SingleAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(nameof(CollectionParentEntity), auditEntry.TableName);
+        Assert.Equal(nameof(EntityState.Modified), auditEntry.State);
+        Assert.Null(auditEntry.NewName);
+        Assert.Equal("Tracked Tag", auditEntry.NewTags);
+    }
 }

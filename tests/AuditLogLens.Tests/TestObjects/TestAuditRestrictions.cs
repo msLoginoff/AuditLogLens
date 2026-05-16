@@ -11,6 +11,8 @@ public sealed class TestAuditRestrictions : AuditRestrictionsBase
         rules.For<AllowedEntity>()
             .Ignore(x => x.Secret);
 
+        rules.For<CollectionParentEntity>();
+
         rules.For<SpecialDeleteEntity>();
     }
 

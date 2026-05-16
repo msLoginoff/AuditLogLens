@@ -15,7 +15,17 @@ public sealed class TestAuditEntryMapper : IAuditEntryMapper<TestAuditEntry>
             State = change.State,
             NewName = change.NewValues.TryGetValue(nameof(AllowedEntity.Name), out var name)
                 ? name?.ToString()
+                : null,
+            NewTags = change.NewValues.TryGetValue("Tags", out var tags)
+                ? FormatCollection(tags)
                 : null
         };
+    }
+
+    private static string? FormatCollection(object? value)
+    {
+        return value is IEnumerable<object?> values
+            ? string.Join(",", values)
+            : value?.ToString();
     }
 }
