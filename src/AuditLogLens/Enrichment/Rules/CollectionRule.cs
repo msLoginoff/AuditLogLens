@@ -1,7 +1,6 @@
-using System.Collections.Concurrent;
-using System.Reflection;
 using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment.Context;
+using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Loading;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,9 +8,6 @@ namespace AuditLogLens.Enrichment.Rules;
 
 public sealed class CollectionRule : EnrichmentRule
 {
-    private static readonly ConcurrentDictionary<(Type EntityType, string PropertyName), PropertyInfo> _propertyCache =
-        new();
-
     public required Type JoinEntityType { get; init; }
 
     public required Type ItemEntityType { get; init; }
@@ -205,16 +201,7 @@ public sealed class CollectionRule : EnrichmentRule
 
     private object? GetItemKey(object entity)
     {
-        return GetRequiredProperty(entity.GetType(), ItemKeyPropertyName).GetValue(entity);
-    }
-
-    private static PropertyInfo GetRequiredProperty(Type entityType, string propertyName)
-    {
-        return _propertyCache.GetOrAdd(
-            (entityType, propertyName),
-            static key => key.EntityType.GetProperty(key.PropertyName, BindingFlags.Public | BindingFlags.Instance)
-                          ?? throw new InvalidOperationException(
-                              $"Property '{key.PropertyName}' was not found on type {key.EntityType.FullName}."));
+        return EntityPropertyReader.GetValue(entity, ItemKeyPropertyName);
     }
 
     private enum CollectionSide

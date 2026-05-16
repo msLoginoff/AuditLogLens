@@ -28,7 +28,7 @@ public class AuditDomainEnrichmentConfigTests
             new StaticAuditDomainEnrichmentPlanProvider(),
             new AuditEntityEnricherRegistry([]));
 
-        await enricher.EnrichAsync([change], db, TestContext.Current.CancellationToken);
+        await enricher.EnrichAsync([change], db, [], TestContext.Current.CancellationToken);
 
         Assert.Equal("Readable", change.NewValues["RelatedName"]);
     }

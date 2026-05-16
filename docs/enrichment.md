@@ -52,12 +52,24 @@ builder.Reference<Visit, Doctor, Guid>(
 Use collection enrichment for explicit join entities, such as `PatientTag`, `VisitResource`, or `UserRole`.
 
 ```csharp
-builder.Collection<Patient, PatientTag, Tag, int, int>(
+builder.Collection<Patient, PatientTag, Tag>(
+    joinParentKey: join => join.PatientId,
+    joinItemKey: join => join.TagId,
     fieldName: "Tags",
+    itemValueSelector: tag => tag.Name);
+```
+
+This short form uses `Id` as the key property for the parent and item entities.
+
+If the parent or item entity does not use `Id`, pass keys explicitly:
+
+```csharp
+builder.Collection<Patient, PatientTag, Tag, int, int>(
     parentKey: patient => patient.Id,
     joinParentKey: join => join.PatientId,
     joinItemKey: join => join.TagId,
     itemKey: tag => tag.Id,
+    fieldName: "Tags",
     itemValueSelector: tag => tag.Name);
 ```
 

@@ -6,6 +6,7 @@ using AuditLogLens.Enrichment.Rules;
 using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Xunit;
 
 namespace AuditLogLens.Tests;
@@ -58,6 +59,7 @@ public class AuditEnrichmentFacadeTests
         await enricher.EnrichAsync(
             [firstChange, secondChange],
             db,
+            CaptureTrackedEntries(db),
             TestContext.Current.CancellationToken);
 
         Assert.Equal("First", firstChange.NewValues["RelatedName"]);
@@ -96,6 +98,7 @@ public class AuditEnrichmentFacadeTests
         await enricher.EnrichAsync(
             [change],
             db,
+            CaptureTrackedEntries(db),
             TestContext.Current.CancellationToken);
 
         Assert.False(change.OldValues.ContainsKey("RelatedName"));
@@ -136,6 +139,7 @@ public class AuditEnrichmentFacadeTests
         await enricher.EnrichAsync(
             [change],
             db,
+            CaptureTrackedEntries(db),
             TestContext.Current.CancellationToken);
 
         Assert.Equal("Old Readable", change.OldValues["RelatedName"]);
@@ -180,11 +184,7 @@ public class AuditEnrichmentFacadeTests
         change.OldValues[nameof(CollectionParentEntity.Name)] = "Parent";
         change.NewValues[nameof(CollectionParentEntity.Name)] = "Changed";
 
-        var trackedEntries = db.ChangeTracker
-            .Entries()
-            .Where(entry => entry.State != EntityState.Detached)
-            .Select(entry => new AuditTrackedEntry(entry))
-            .ToList();
+        var trackedEntries = CaptureTrackedEntries(db);
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -205,6 +205,128 @@ public class AuditEnrichmentFacadeTests
         Assert.Equal(["New Tag"], newTags);
     }
 
+    [Fact]
+    public async Task EnrichAsync_AppliesCollectionRuleForAddedParent()
+    {
+        await using var db = CreateDbContext();
+
+        db.CollectionLookupEntities.AddRange(
+            new CollectionLookupEntity { Id = 10, Name = "First Tag" },
+            new CollectionLookupEntity { Id = 20, Name = "Second Tag" });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var parent = new CollectionParentEntity { Id = 1, Name = "Parent" };
+        db.CollectionParentEntities.Add(parent);
+        db.CollectionRefEntities.AddRange(
+            new CollectionRefEntity { ParentId = 1, LookupId = 10 },
+            new CollectionRefEntity { ParentId = 1, LookupId = 20 });
+
+        var change = CreateParentChange(parent, db.Entry(parent), EntityState.Added);
+        var trackedEntries = CaptureTrackedEntries(db);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await EnrichAsync(db, change, trackedEntries);
+
+        Assert.False(change.OldValues.ContainsKey("Tags"));
+        AssertCollectionValue(change.NewValues["Tags"], "First Tag", "Second Tag");
+    }
+
+    [Fact]
+    public async Task EnrichAsync_AppliesCollectionRuleForDeletedParent()
+    {
+        await using var db = CreateDbContext();
+
+        db.CollectionParentEntities.Add(new CollectionParentEntity { Id = 1, Name = "Parent" });
+        db.CollectionLookupEntities.Add(new CollectionLookupEntity { Id = 10, Name = "Deleted Tag" });
+        db.CollectionRefEntities.Add(new CollectionRefEntity { ParentId = 1, LookupId = 10 });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var parent = db.CollectionParentEntities.Single();
+        db.CollectionParentEntities.Remove(parent);
+
+        var change = CreateParentChange(parent, db.Entry(parent), EntityState.Deleted);
+        var trackedEntries = CaptureTrackedEntries(db);
+
+        await EnrichAsync(db, change, trackedEntries);
+
+        AssertCollectionValue(change.OldValues["Tags"], "Deleted Tag");
+        Assert.False(change.NewValues.ContainsKey("Tags"));
+    }
+
+    [Fact]
+    public async Task EnrichAsync_AppliesCollectionRuleOnlyToMatchingParent()
+    {
+        await using var db = CreateDbContext();
+
+        db.CollectionParentEntities.AddRange(
+            new CollectionParentEntity { Id = 1, Name = "First" },
+            new CollectionParentEntity { Id = 2, Name = "Second" });
+        db.CollectionLookupEntities.AddRange(
+            new CollectionLookupEntity { Id = 10, Name = "First Tag" },
+            new CollectionLookupEntity { Id = 20, Name = "Second Tag" });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var first = db.CollectionParentEntities.Single(x => x.Id == 1);
+        var second = db.CollectionParentEntities.Single(x => x.Id == 2);
+        first.Name = "First Changed";
+        second.Name = "Second Changed";
+
+        db.CollectionRefEntities.AddRange(
+            new CollectionRefEntity { ParentId = 1, LookupId = 10 },
+            new CollectionRefEntity { ParentId = 2, LookupId = 20 });
+
+        var firstChange = CreateParentChange(first, db.Entry(first), EntityState.Modified);
+        var secondChange = CreateParentChange(second, db.Entry(second), EntityState.Modified);
+        var trackedEntries = CaptureTrackedEntries(db);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await EnrichAsync(db, firstChange, secondChange, trackedEntries);
+
+        AssertCollectionValue(firstChange.NewValues["Tags"], "First Tag");
+        AssertCollectionValue(secondChange.NewValues["Tags"], "Second Tag");
+    }
+
+    [Fact]
+    public void Collection_FullOverloadBuildsRuleWithExplicitKeys()
+    {
+        var builder = new AuditEnrichmentPlanBuilder();
+
+        builder.Collection<CollectionParentEntity, CollectionRefEntity, CollectionLookupEntity, int, int>(
+            parentKey: parent => parent.Id,
+            joinParentKey: reference => reference.ParentId,
+            joinItemKey: reference => reference.LookupId,
+            itemKey: lookup => lookup.Id,
+            fieldName: "Tags",
+            itemValueSelector: lookup => lookup.Name);
+
+        var rule = Assert.IsType<CollectionRule>(Assert.Single(builder.Build().Rules));
+
+        Assert.Equal(typeof(CollectionRefEntity), rule.JoinEntityType);
+        Assert.Equal(typeof(CollectionLookupEntity), rule.ItemEntityType);
+        Assert.Equal(nameof(CollectionParentEntity.Id), rule.ParentKeyPropertyName);
+        Assert.Equal(nameof(CollectionRefEntity.ParentId), rule.JoinParentKeyPropertyName);
+        Assert.Equal(nameof(CollectionRefEntity.LookupId), rule.JoinItemKeyPropertyName);
+        Assert.Equal(nameof(CollectionLookupEntity.Id), rule.ItemKeyPropertyName);
+        Assert.Equal("Tags", rule.FieldName);
+    }
+
+    [Fact]
+    public async Task EnrichAsync_CollectionRuleRequiresParentEntryInsteadOfFallingBackToEntityId()
+    {
+        await using var db = CreateDbContext();
+
+        var change = new AuditChange
+        {
+            EntityType = typeof(CollectionParentEntity),
+            EntityId = 1,
+            State = nameof(EntityState.Modified)
+        };
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => EnrichAsync(db, change, []));
+
+        Assert.Contains("requires AuditChange.Entry", exception.Message);
+    }
+
     private sealed class TestDomainEnrichmentPlanProvider : IAuditDomainEnrichmentPlanProvider
     {
         public AuditEnrichmentPlan GetPlan(Type entityType)
@@ -222,12 +344,10 @@ public class AuditEnrichmentFacadeTests
             if (entityType == typeof(CollectionParentEntity))
             {
                 var builder = new AuditEnrichmentPlanBuilder();
-                builder.Collection<CollectionParentEntity, CollectionRefEntity, CollectionLookupEntity, int, int>(
-                    "Tags",
-                    parent => parent.Id,
+                builder.Collection<CollectionParentEntity, CollectionRefEntity, CollectionLookupEntity>(
                     reference => reference.ParentId,
                     reference => reference.LookupId,
-                    lookup => lookup.Id,
+                    "Tags",
                     lookup => lookup.Name);
 
                 return new AuditEnrichmentPlan(
@@ -254,5 +374,67 @@ public class AuditEnrichmentFacadeTests
                 ],
                 customSteps: []);
         }
+    }
+
+    private static IReadOnlyList<AuditTrackedEntry> CaptureTrackedEntries(DbContext db)
+    {
+        return db.ChangeTracker
+            .Entries()
+            .Where(entry => entry.State != EntityState.Detached)
+            .Select(entry => new AuditTrackedEntry(entry))
+            .ToList();
+    }
+
+    private static AuditChange CreateParentChange(
+        CollectionParentEntity parent,
+        EntityEntry entry,
+        EntityState state)
+    {
+        return new AuditChange
+        {
+            EntityType = typeof(CollectionParentEntity),
+            EntityId = parent.Id,
+            State = state.ToString(),
+            Entry = entry
+        };
+    }
+
+    private static async Task EnrichAsync(
+        AuditTestDbContext db,
+        AuditChange change,
+        IReadOnlyList<AuditTrackedEntry> trackedEntries)
+    {
+        await EnrichAsync(db, [change], trackedEntries);
+    }
+
+    private static async Task EnrichAsync(
+        AuditTestDbContext db,
+        AuditChange firstChange,
+        AuditChange secondChange,
+        IReadOnlyList<AuditTrackedEntry> trackedEntries)
+    {
+        await EnrichAsync(db, [firstChange, secondChange], trackedEntries);
+    }
+
+    private static async Task EnrichAsync(
+        AuditTestDbContext db,
+        List<AuditChange> changes,
+        IReadOnlyList<AuditTrackedEntry> trackedEntries)
+    {
+        var enricher = new AuditEnrichmentFacade(
+            new TestDomainEnrichmentPlanProvider(),
+            new AuditEntityEnricherRegistry([]));
+
+        await enricher.EnrichAsync(
+            changes,
+            db,
+            trackedEntries,
+            TestContext.Current.CancellationToken);
+    }
+
+    private static void AssertCollectionValue(object? actual, params string[] expected)
+    {
+        var values = Assert.IsAssignableFrom<IEnumerable<object?>>(actual);
+        Assert.Equal(expected, values);
     }
 }

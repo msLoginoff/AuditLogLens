@@ -1,6 +1,5 @@
-using System.Collections.Concurrent;
-using System.Reflection;
 using AuditLogLens.Enrichment.Context;
+using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Loading;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,9 +7,6 @@ namespace AuditLogLens.Enrichment.Rules;
 
 public sealed class ReferenceRule : EnrichmentRule
 {
-    private static readonly ConcurrentDictionary<(Type EntityType, string PropertyName), PropertyInfo> _propertyCache =
-        new();
-
     public required Type TargetEntityType { get; init; }
 
     public required string ForeignKeyPropertyName { get; init; }
@@ -105,13 +101,6 @@ public sealed class ReferenceRule : EnrichmentRule
 
     private object? GetKeyValue(object entity)
     {
-        var entityType = entity.GetType();
-        var property = _propertyCache.GetOrAdd(
-            (entityType, TargetKeyPropertyName),
-            static key => key.EntityType.GetProperty(key.PropertyName, BindingFlags.Public | BindingFlags.Instance)
-                          ?? throw new InvalidOperationException(
-                              $"Property '{key.PropertyName}' was not found on type {key.EntityType.FullName}."));
-
-        return property.GetValue(entity);
+        return EntityPropertyReader.GetValue(entity, TargetKeyPropertyName);
     }
 }

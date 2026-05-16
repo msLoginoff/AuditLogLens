@@ -14,22 +14,18 @@ public sealed class AuditEnrichmentContext
     internal AuditEnrichmentContext(
         IReadOnlyList<AuditChange> changes,
         DbContext dbContext,
-        IReadOnlyList<AuditTrackedEntry>? trackedEntries = null)
+        IReadOnlyList<AuditTrackedEntry> trackedEntries)
     {
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(dbContext);
+        ArgumentNullException.ThrowIfNull(trackedEntries);
 
         Changes = changes;
         DbContext = dbContext;
         _changesByEntityType = changes
             .GroupBy(x => x.EntityType)
             .ToDictionary(x => x.Key, x => (IReadOnlyList<AuditChange>)x.ToList());
-        _trackedEntries = trackedEntries
-                          ?? dbContext.ChangeTracker
-                              .Entries()
-                              .Where(entry => entry.State != EntityState.Detached)
-                              .Select(entry => new AuditTrackedEntry(entry))
-                              .ToList();
+        _trackedEntries = trackedEntries;
 
         foreach (var change in changes)
         {

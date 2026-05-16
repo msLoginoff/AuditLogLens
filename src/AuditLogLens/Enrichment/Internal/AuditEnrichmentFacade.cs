@@ -55,14 +55,6 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
         context.MergeBagsToChanges();
     }
 
-    public Task EnrichAsync(
-        List<AuditChange> changes,
-        DbContext dbContext,
-        CancellationToken cancellationToken = default)
-    {
-        return EnrichAsync(changes, dbContext, [], cancellationToken);
-    }
-
     private AuditEnrichmentPlan BuildCombinedPlan(Type entityType)
     {
         var builder = new AuditEnrichmentPlanBuilder()
