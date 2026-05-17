@@ -7,4 +7,6 @@ internal sealed class EntityLoadRequest
     public required string PropertyName { get; init; }
 
     public required IReadOnlyList<object> Values { get; init; }
+
+    public IReadOnlyList<string> IncludePaths { get; init; } = [];
 }

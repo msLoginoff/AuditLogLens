@@ -147,6 +147,48 @@ public class AuditEnrichmentFacadeTests
     }
 
     [Fact]
+    public async Task EnrichAsync_ReferenceRuleLoadsConfiguredIncludesForNestedProjection()
+    {
+        await using var db = CreateDbContext();
+
+        db.NestedRelatedEntities.Add(new NestedRelatedEntity { Id = 10, Name = "Nested readable" });
+        db.RelatedEntities.Add(new RelatedEntity
+        {
+            Id = 1,
+            Name = "Related",
+            NestedRelatedId = 10
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        db.ChangeTracker.Clear();
+
+        var change = new AuditChange
+        {
+            EntityType = typeof(FirstSourceEntity),
+            State = nameof(EntityState.Added)
+        };
+        change.NewValues[nameof(FirstSourceEntity.RelatedEntityId)] = 1;
+
+        var builder = new AuditEnrichmentPlanBuilder();
+        builder.Reference<FirstSourceEntity, RelatedEntity, int>(
+            source => source.RelatedEntityId,
+            "NestedRelatedName",
+            related => related.NestedRelated == null ? null : related.NestedRelated.Name,
+            options => options.Include(related => related.NestedRelated));
+
+        var enricher = new AuditEnrichmentFacade(
+            CreatePlanResolver(builder.Build()),
+            new AuditEntityEnricherRegistry([]));
+
+        await enricher.EnrichAsync(
+            [change],
+            db,
+            CaptureTrackedEntries(db),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("Nested readable", change.NewValues["NestedRelatedName"]);
+    }
+
+    [Fact]
     public async Task EnrichAsync_AppliesCollectionRuleForTrackedRefChanges()
     {
         await using var db = CreateDbContext();
@@ -496,9 +538,33 @@ public class AuditEnrichmentFacadeTests
             new AuditEntityEnricherRegistry([]));
     }
 
+    private static AuditEnrichmentPlanResolver CreatePlanResolver(AuditEnrichmentPlan plan)
+    {
+        return new AuditEnrichmentPlanResolver(
+            new StaticPlanProvider(plan),
+            new AuditEntityEnricherRegistry([]));
+    }
+
     private static void AssertCollectionValue(object? actual, params string[] expected)
     {
         var values = Assert.IsAssignableFrom<IEnumerable<object?>>(actual);
         Assert.Equal(expected, values);
+    }
+
+    private sealed class StaticPlanProvider : IAuditDomainEnrichmentPlanProvider
+    {
+        private readonly AuditEnrichmentPlan _plan;
+
+        public StaticPlanProvider(AuditEnrichmentPlan plan)
+        {
+            _plan = plan;
+        }
+
+        public AuditEnrichmentPlan GetPlan(Type entityType)
+        {
+            return entityType == typeof(FirstSourceEntity)
+                ? _plan
+                : AuditEnrichmentPlan.Empty;
+        }
     }
 }

@@ -13,10 +13,26 @@ public static class AuditEnrichmentPlanBuilderReferenceExtensions
         string fieldName,
         Expression<Func<TTarget, object?>> valueSelector)
     {
+        return builder.Reference(
+            foreignKeyProperty,
+            fieldName,
+            valueSelector,
+            configure: null);
+    }
+
+    public static IAuditEnrichmentPlanBuilder Reference<TSource, TTarget, TKey>(
+        this IAuditEnrichmentPlanBuilder builder,
+        Expression<Func<TSource, TKey>> foreignKeyProperty,
+        string fieldName,
+        Expression<Func<TTarget, object?>> valueSelector,
+        Action<AuditReferenceOptions<TTarget>>? configure)
+    {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(foreignKeyProperty);
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldName);
         ArgumentNullException.ThrowIfNull(valueSelector);
+
+        var options = BuildOptions(configure);
 
         return builder.AddRule(new ReferenceRule
         {
@@ -24,7 +40,8 @@ public static class AuditEnrichmentPlanBuilderReferenceExtensions
             ForeignKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(foreignKeyProperty),
             TargetKeyPropertyName = GetDefaultTargetKeyPropertyName<TTarget>(),
             FieldName = fieldName,
-            ValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(valueSelector)
+            ValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(valueSelector),
+            IncludePaths = options.IncludePaths
         });
     }
 
@@ -35,11 +52,29 @@ public static class AuditEnrichmentPlanBuilderReferenceExtensions
         string fieldName,
         Expression<Func<TTarget, object?>> valueSelector)
     {
+        return builder.Reference(
+            foreignKeyProperty,
+            targetKeyProperty,
+            fieldName,
+            valueSelector,
+            configure: null);
+    }
+
+    public static IAuditEnrichmentPlanBuilder Reference<TSource, TTarget, TKey>(
+        this IAuditEnrichmentPlanBuilder builder,
+        Expression<Func<TSource, TKey>> foreignKeyProperty,
+        Expression<Func<TTarget, TKey>> targetKeyProperty,
+        string fieldName,
+        Expression<Func<TTarget, object?>> valueSelector,
+        Action<AuditReferenceOptions<TTarget>>? configure)
+    {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(foreignKeyProperty);
         ArgumentNullException.ThrowIfNull(targetKeyProperty);
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldName);
         ArgumentNullException.ThrowIfNull(valueSelector);
+
+        var options = BuildOptions(configure);
 
         return builder.AddRule(new ReferenceRule
         {
@@ -47,8 +82,17 @@ public static class AuditEnrichmentPlanBuilderReferenceExtensions
             ForeignKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(foreignKeyProperty),
             TargetKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(targetKeyProperty),
             FieldName = fieldName,
-            ValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(valueSelector)
+            ValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(valueSelector),
+            IncludePaths = options.IncludePaths
         });
+    }
+
+    private static AuditReferenceOptions<TTarget> BuildOptions<TTarget>(
+        Action<AuditReferenceOptions<TTarget>>? configure)
+    {
+        var options = new AuditReferenceOptions<TTarget>();
+        configure?.Invoke(options);
+        return options;
     }
 
     private static string GetDefaultTargetKeyPropertyName<TTarget>()

@@ -16,6 +16,7 @@ public sealed class AuditTestDbContext : DbContext
     public DbSet<DomainConfiguredSourceEntity> DomainConfiguredSourceEntities => Set<DomainConfiguredSourceEntity>();
     public DbSet<ForbiddenEntity> ForbiddenEntities => Set<ForbiddenEntity>();
     public DbSet<FirstSourceEntity> FirstSourceEntities => Set<FirstSourceEntity>();
+    public DbSet<NestedRelatedEntity> NestedRelatedEntities => Set<NestedRelatedEntity>();
     public DbSet<PolymorphicAbsenceEvent> PolymorphicAbsenceEvents => Set<PolymorphicAbsenceEvent>();
     public DbSet<PolymorphicCollectionEvent> PolymorphicCollectionEvents => Set<PolymorphicCollectionEvent>();
 

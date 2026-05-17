@@ -17,6 +17,8 @@ public sealed class ReferenceRule : EnrichmentRule
 
     public required Func<object, object?> ValueSelector { get; init; }
 
+    public IReadOnlyList<string> IncludePaths { get; init; } = [];
+
     internal override EntityLoadRequest? BuildLoadRequest(
         IReadOnlyList<AuditChange> changes,
         AuditEnrichmentContext context)
@@ -33,7 +35,8 @@ public sealed class ReferenceRule : EnrichmentRule
             {
                 EntityType = TargetEntityType,
                 PropertyName = TargetKeyPropertyName,
-                Values = values
+                Values = values,
+                IncludePaths = IncludePaths
             }
             : null;
     }

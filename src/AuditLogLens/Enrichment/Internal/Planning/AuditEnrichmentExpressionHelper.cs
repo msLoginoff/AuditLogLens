@@ -21,6 +21,37 @@ internal static class AuditEnrichmentExpressionHelper
         return propertyInfo.Name;
     }
 
+    public static string GetPropertyPath<TEntity, TProperty>(
+        Expression<Func<TEntity, TProperty>> expression)
+    {
+        ArgumentNullException.ThrowIfNull(expression);
+
+        var members = new Stack<string>();
+        var current = UnwrapConvert(expression.Body);
+
+        while (current is MemberExpression memberExpression)
+        {
+            if (memberExpression.Member is not PropertyInfo)
+            {
+                throw new InvalidOperationException(
+                    $"Expression '{expression}' must point to a property path.");
+            }
+
+            members.Push(memberExpression.Member.Name);
+            current = memberExpression.Expression is null
+                ? null
+                : UnwrapConvert(memberExpression.Expression);
+        }
+
+        if (current is not ParameterExpression || members.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"Expression '{expression}' must be a property path like x => x.SomeNavigation.");
+        }
+
+        return string.Join(".", members);
+    }
+
     public static Func<object, object?> BoxValueSelector<TEntity, TValue>(
         Expression<Func<TEntity, TValue>> expression)
     {
@@ -33,18 +64,27 @@ internal static class AuditEnrichmentExpressionHelper
 
     private static MemberExpression UnwrapToMemberExpression(Expression expression)
     {
+        expression = UnwrapConvert(expression);
+
         if (expression is MemberExpression memberExpression)
         {
             return memberExpression;
         }
 
-        if (expression is UnaryExpression unaryExpression
-            && unaryExpression.NodeType is ExpressionType.Convert or ExpressionType.ConvertChecked)
-        {
-            return UnwrapToMemberExpression(unaryExpression.Operand);
-        }
-
         throw new InvalidOperationException(
             $"Expression '{expression}' must be a simple property access like x => x.SomeProperty.");
+    }
+
+    private static Expression UnwrapConvert(Expression expression)
+    {
+        while (expression is UnaryExpression
+               {
+                   NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked
+               } unaryExpression)
+        {
+            expression = unaryExpression.Operand;
+        }
+
+        return expression;
     }
 }

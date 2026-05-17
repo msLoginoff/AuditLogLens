@@ -3,6 +3,7 @@ using System.Reflection;
 using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment.Context;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace AuditLogLens.Enrichment.Internal.Loading;
@@ -37,11 +38,17 @@ internal static class EnrichmentDataLoader
             if (values.Count == 0)
                 continue;
 
+            var includePaths = group
+                .SelectMany(r => r.IncludePaths)
+                .Distinct()
+                .ToList();
+
             var property = GetRequiredEfProperty(context.DbContext, entityType, propertyName);
             var tracked = GetTrackedEntities(
                 context.GetTrackedEntries(entityType),
                 propertyName,
                 values,
+                includePaths,
                 out var trackedValues);
 
             var missingValues = values
@@ -51,7 +58,7 @@ internal static class EnrichmentDataLoader
             var loaded = missingValues.Count == 0
                 ? []
                 : await LoadEntitiesByPropertyValuesAsync(
-                        context.DbContext, entityType, property, missingValues, cancellationToken)
+                        context.DbContext, entityType, property, missingValues, includePaths, cancellationToken)
                     .ConfigureAwait(false);
 
             context.SetLoadedEntities(
@@ -66,13 +73,15 @@ internal static class EnrichmentDataLoader
         Type entityType,
         IProperty property,
         IReadOnlyList<object> values,
+        IReadOnlyList<string> includePaths,
         CancellationToken cancellationToken)
     {
         var method = _closedMethodCache.GetOrAdd(
             (entityType, property.ClrType),
             static key => _loadEntitiesGenericMethod.MakeGenericMethod(key.Entity, key.Key));
 
-        return (Task<IReadOnlyList<object>>)(method.Invoke(null, [dbContext, property.Name, values, cancellationToken])
+        return (Task<IReadOnlyList<object>>)(method.Invoke(null,
+                                                 [dbContext, property.Name, values, includePaths, cancellationToken])
                                              ?? Task.FromResult<IReadOnlyList<object>>(Array.Empty<object>()));
     }
 
@@ -80,6 +89,7 @@ internal static class EnrichmentDataLoader
         DbContext dbContext,
         string propertyName,
         IReadOnlyList<object> rawValues,
+        IReadOnlyList<string> includePaths,
         CancellationToken cancellationToken)
         where TEntity : class
     {
@@ -88,9 +98,16 @@ internal static class EnrichmentDataLoader
         if (typedValues.Count == 0)
             return Array.Empty<object>();
 
-        return await dbContext
+        var query = dbContext
             .Set<TEntity>()
-            .AsNoTracking()
+            .AsNoTracking();
+
+        foreach (var includePath in includePaths)
+        {
+            query = query.Include(includePath);
+        }
+
+        return await query
             .Where(x => typedValues.Contains(EF.Property<TProperty>(x, propertyName)))
             .Cast<object>()
             .ToListAsync(cancellationToken)
@@ -115,6 +132,7 @@ internal static class EnrichmentDataLoader
         IReadOnlyList<AuditTrackedEntry> trackedEntries,
         string propertyName,
         IReadOnlyCollection<object> values,
+        IReadOnlyCollection<string> includePaths,
         out HashSet<object> trackedValues)
     {
         trackedValues = [];
@@ -127,6 +145,11 @@ internal static class EnrichmentDataLoader
 
         foreach (var entry in trackedEntries)
         {
+            if (!HasLoadedIncludes(entry.Entry, includePaths))
+            {
+                continue;
+            }
+
             if (entry.Entry.Metadata.FindProperty(propertyName) is null)
             {
                 continue;
@@ -141,6 +164,33 @@ internal static class EnrichmentDataLoader
         }
 
         return result;
+    }
+
+    private static bool HasLoadedIncludes(
+        EntityEntry entry,
+        IReadOnlyCollection<string> includePaths)
+    {
+        if (includePaths.Count == 0)
+            return true;
+
+        foreach (var includePath in includePaths)
+        {
+            if (includePath.Contains('.'))
+                return false;
+
+            var navigation = entry.Metadata.FindNavigation(includePath);
+            if (navigation is null)
+                return false;
+
+            var isLoaded = navigation.IsCollection
+                ? entry.Collection(includePath).IsLoaded
+                : entry.Reference(includePath).IsLoaded;
+
+            if (!isLoaded)
+                return false;
+        }
+
+        return true;
     }
 
     private static IReadOnlyList<object> Deduplicate(
