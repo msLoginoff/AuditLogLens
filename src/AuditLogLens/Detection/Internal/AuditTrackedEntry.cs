@@ -6,6 +6,7 @@ namespace AuditLogLens.Detection.Internal;
 internal sealed class AuditTrackedEntry
 {
     private readonly Dictionary<string, object?> _currentValues;
+    private readonly Dictionary<string, object?> _referenceValues;
 
     public AuditTrackedEntry(EntityEntry entry)
     {
@@ -18,6 +19,9 @@ internal sealed class AuditTrackedEntry
         _currentValues = entry.Properties.ToDictionary(
             property => property.Metadata.Name,
             property => property.CurrentValue);
+        _referenceValues = entry.References.ToDictionary(
+            reference => reference.Metadata.Name,
+            reference => reference.CurrentValue);
     }
 
     public EntityEntry Entry { get; }
@@ -39,5 +43,12 @@ internal sealed class AuditTrackedEntry
 
         throw new InvalidOperationException(
             $"Property '{propertyName}' was not found on tracked entity type {EntityType.FullName}.");
+    }
+
+    public bool TryGetReferenceValue(string navigationName, out object? value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(navigationName);
+
+        return _referenceValues.TryGetValue(navigationName, out value);
     }
 }

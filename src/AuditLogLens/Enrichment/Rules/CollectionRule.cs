@@ -28,7 +28,7 @@ public sealed class CollectionRule : EnrichmentRule
         IReadOnlyList<AuditChange> changes,
         AuditEnrichmentContext context)
     {
-        var parentChanges = BuildParentChangeLookup(changes, context);
+        var parentChanges = BuildParentChangeIndex(changes, context);
         if (parentChanges.IsEmpty)
         {
             return null;
@@ -50,7 +50,7 @@ public sealed class CollectionRule : EnrichmentRule
 
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
-        var parentChanges = BuildParentChangeLookup(changes, context);
+        var parentChanges = BuildParentChangeIndex(changes, context);
         if (parentChanges.IsEmpty)
         {
             return;
@@ -89,12 +89,12 @@ public sealed class CollectionRule : EnrichmentRule
         }
     }
 
-    private ParentChangeLookup BuildParentChangeLookup(
+    private ParentChangeIndex BuildParentChangeIndex(
         IReadOnlyList<AuditChange> changes,
         AuditEnrichmentContext context)
     {
         var byKey = new Dictionary<object, AuditChange>();
-        var byEntity = new Dictionary<object, AuditChange>(ReferenceEqualityComparer.Instance);
+        var byEntityReference = new Dictionary<object, AuditChange>(ReferenceEqualityComparer.Instance);
 
         foreach (var change in changes)
         {
@@ -106,21 +106,21 @@ public sealed class CollectionRule : EnrichmentRule
 
             if (change.Entry is not null)
             {
-                byEntity.TryAdd(change.Entry.Entity, change);
+                byEntityReference.TryAdd(change.Entry.Entity, change);
             }
         }
 
-        AddPreSaveParentKeys(changes, context, byKey, byEntity);
+        AddPreSaveKeysForParentEntries(changes, context, byKey, byEntityReference);
 
-        return new ParentChangeLookup(
+        return new ParentChangeIndex(
             byKey,
-            byEntity,
-            FindParentNavigationName(changes, context));
+            byEntityReference,
+            FindJoinToParentNavigationName(changes, context));
     }
 
     private IEnumerable<CollectionJoinMatch> GetJoinMatches(
         AuditEnrichmentContext context,
-        ParentChangeLookup parentChanges)
+        ParentChangeIndex parentChanges)
     {
         foreach (var joinEntry in context.GetTrackedEntries(JoinEntityType))
         {
@@ -139,7 +139,7 @@ public sealed class CollectionRule : EnrichmentRule
 
     private IEnumerable<CollectionItem> GetCollectionItems(
         AuditEnrichmentContext context,
-        ParentChangeLookup parentChanges,
+        ParentChangeIndex parentChanges,
         IReadOnlyDictionary<object, object> itemsByKey)
     {
         foreach (var match in GetJoinMatches(context, parentChanges))
@@ -157,18 +157,20 @@ public sealed class CollectionRule : EnrichmentRule
         }
     }
 
-    private void AddPreSaveParentKeys(
+    private void AddPreSaveKeysForParentEntries(
         IReadOnlyList<AuditChange> changes,
         AuditEnrichmentContext context,
         Dictionary<object, AuditChange> byKey,
-        IReadOnlyDictionary<object, AuditChange> byEntity)
+        IReadOnlyDictionary<object, AuditChange> byEntityReference)
     {
+        // Parent changes are post-save entries, while collection join rows are matched from pre-save snapshots.
+        // Index both real keys and entity references so generated keys and navigation-based joins can be matched.
         foreach (var parentEntry in changes
                      .Select(change => change.EntityType)
                      .Distinct()
                      .SelectMany(context.GetTrackedEntries))
         {
-            if (!byEntity.TryGetValue(parentEntry.Entity, out var change))
+            if (!byEntityReference.TryGetValue(parentEntry.Entity, out var change))
             {
                 continue;
             }
@@ -183,14 +185,14 @@ public sealed class CollectionRule : EnrichmentRule
 
     private bool TryGetParentChange(
         AuditTrackedEntry joinEntry,
-        ParentChangeLookup parentChanges,
+        ParentChangeIndex parentChanges,
         out AuditChange parentChange)
     {
-        if (parentChanges.ParentNavigationName is not null)
+        if (parentChanges.JoinToParentNavigationName is not null
+            && joinEntry.TryGetReferenceValue(parentChanges.JoinToParentNavigationName, out var parentEntity))
         {
-            var parentEntity = joinEntry.Entry.Member(parentChanges.ParentNavigationName).CurrentValue;
             if (parentEntity is not null
-                && parentChanges.ByEntity.TryGetValue(parentEntity, out parentChange!))
+                && parentChanges.ByEntityReference.TryGetValue(parentEntity, out parentChange!))
             {
                 return true;
             }
@@ -207,7 +209,7 @@ public sealed class CollectionRule : EnrichmentRule
         return false;
     }
 
-    private string? FindParentNavigationName(
+    private string? FindJoinToParentNavigationName(
         IReadOnlyList<AuditChange> changes,
         AuditEnrichmentContext context)
     {
@@ -229,7 +231,7 @@ public sealed class CollectionRule : EnrichmentRule
         return foreignKey?.DependentToPrincipal?.Name;
     }
 
-    private CollectionSide? ResolveSide(AuditChange parentChange, EntityState joinState)
+    private static CollectionSide? ResolveSide(AuditChange parentChange, EntityState joinState)
     {
         return parentChange.State switch
         {
@@ -293,11 +295,11 @@ public sealed class CollectionRule : EnrichmentRule
         AuditChange Change,
         CollectionSide Side);
 
-    private sealed record ParentChangeLookup(
+    private sealed record ParentChangeIndex(
         IReadOnlyDictionary<object, AuditChange> ByKey,
-        IReadOnlyDictionary<object, AuditChange> ByEntity,
-        string? ParentNavigationName)
+        IReadOnlyDictionary<object, AuditChange> ByEntityReference,
+        string? JoinToParentNavigationName)
     {
-        public bool IsEmpty => ByKey.Count == 0 && ByEntity.Count == 0;
+        public bool IsEmpty => ByKey.Count == 0 && ByEntityReference.Count == 0;
     }
 }

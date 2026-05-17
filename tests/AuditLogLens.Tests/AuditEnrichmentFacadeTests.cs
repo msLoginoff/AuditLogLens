@@ -257,6 +257,37 @@ public class AuditEnrichmentFacadeTests
     }
 
     [Fact]
+    public async Task EnrichAsync_CollectionRuleUsesPreSaveJoinNavigationSnapshot()
+    {
+        await using var db = CreateDbContext();
+
+        db.CollectionLookupEntities.Add(new CollectionLookupEntity { Id = 10, Name = "Snapshot Tag" });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var firstParent = new CollectionParentEntity { Name = "First Parent" };
+        var secondParent = new CollectionParentEntity { Name = "Second Parent" };
+        firstParent.References.Add(new CollectionRefEntity { LookupId = 10 });
+
+        db.CollectionParentEntities.AddRange(firstParent, secondParent);
+
+        var firstChange = CreateParentChange(firstParent, db.Entry(firstParent), EntityState.Added);
+        var secondChange = CreateParentChange(secondParent, db.Entry(secondParent), EntityState.Added);
+        var trackedEntries = CaptureTrackedEntries(db);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        firstChange.EntityId = firstParent.Id;
+        secondChange.EntityId = secondParent.Id;
+
+        var join = db.CollectionRefEntities.Single();
+        join.Parent = secondParent;
+
+        await EnrichAsync(db, firstChange, secondChange, trackedEntries);
+
+        AssertCollectionValue(firstChange.NewValues["Tags"], "Snapshot Tag");
+        Assert.False(secondChange.NewValues.ContainsKey("Tags"));
+    }
+
+    [Fact]
     public async Task EnrichAsync_AppliesCollectionRuleForDeletedParent()
     {
         await using var db = CreateDbContext();
