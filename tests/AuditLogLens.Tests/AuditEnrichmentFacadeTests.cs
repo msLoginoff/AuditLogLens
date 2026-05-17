@@ -381,7 +381,7 @@ public class AuditEnrichmentFacadeTests
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => EnrichAsync(db, change, []));
 
-        Assert.Contains("requires AuditChange.Entry", exception.Message);
+        Assert.Contains("requires parent key", exception.Message);
     }
 
     private sealed class TestDomainEnrichmentPlanProvider : IAuditDomainEnrichmentPlanProvider

@@ -5,6 +5,8 @@ namespace AuditLogLens;
 
 public sealed class AuditChange
 {
+    private readonly Dictionary<string, object?> _syntheticKeyValues = new(StringComparer.Ordinal);
+
     public required Type EntityType { get; init; }
 
     public object? EntityId { get; set; }
@@ -22,6 +24,18 @@ public sealed class AuditChange
     public bool IsAfterSavePhase { get; set; }
 
     public EntityEntry? Entry { get; init; }
+
+    internal void SetSyntheticKeyValue(string key, object? value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        _syntheticKeyValues[key] = value;
+    }
+
+    internal bool TryGetSyntheticKeyValue(string key, out object? value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return _syntheticKeyValues.TryGetValue(key, out value);
+    }
 
     public void SetExtraValue(string key, object? value)
     {

@@ -153,14 +153,17 @@ public class EfAuditWriterTests
 
         db.TestAuditEntries.RemoveRange(db.TestAuditEntries);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        db.ChangeTracker.Clear();
 
-        var parent = await db.CollectionParentEntities.SingleAsync(TestContext.Current.CancellationToken);
+        var parentId = await db.CollectionParentEntities
+            .Select(x => x.Id)
+            .SingleAsync(TestContext.Current.CancellationToken);
+
         db.CollectionRefEntities.Add(new CollectionRefEntity
         {
-            ParentId = parent.Id,
+            ParentId = parentId,
             LookupId = 10
         });
-        db.Entry(parent).State = EntityState.Modified;
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -170,5 +173,49 @@ public class EfAuditWriterTests
         Assert.Equal(nameof(EntityState.Modified), auditEntry.State);
         Assert.Null(auditEntry.NewName);
         Assert.Equal("Tracked Tag", auditEntry.NewTags);
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_WhenPolymorphicCollectionParentIsNotTracked_DoesNotPromoteByScalarKey()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+
+        var services = new ServiceCollection();
+        services
+            .AddAuditInfrastructure()
+            .AddEfAuditWriter<TestAuditEntry, TestAuditEntryMapper>()
+            .AddAuditRestrictions<TestAuditRestrictions>();
+
+        await using var serviceProvider = services.BuildServiceProvider();
+
+        var optionsBuilder = new DbContextOptionsBuilder<AuditTestDbContext>()
+            .UseSqlite(connection);
+        optionsBuilder.AddAuditInterceptor(serviceProvider);
+
+        await using var db = new AuditTestDbContext(optionsBuilder.Options);
+        await db.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+
+        db.CollectionLookupEntities.Add(new CollectionLookupEntity { Id = 10, Name = "Tracked Tag" });
+        db.PolymorphicAbsenceEvents.Add(new PolymorphicAbsenceEvent { Reason = "Vacation" });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        db.TestAuditEntries.RemoveRange(db.TestAuditEntries);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        db.ChangeTracker.Clear();
+
+        var absenceId = await db.PolymorphicAbsenceEvents
+            .Select(x => x.Id)
+            .SingleAsync(TestContext.Current.CancellationToken);
+
+        db.PolymorphicCollectionRefEntities.Add(new PolymorphicCollectionRefEntity
+        {
+            EventId = absenceId,
+            LookupId = 10
+        });
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(await db.TestAuditEntries.ToListAsync(TestContext.Current.CancellationToken));
     }
 }

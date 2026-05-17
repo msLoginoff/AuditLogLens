@@ -27,6 +27,7 @@ public static class AuditExtensions
         services.AddScoped<AuditEntityEnricherRegistry>();
         services.AddScoped<AuditEnrichmentPlanResolver>();
         services.AddScoped<IAuditChangeDetector, EfAuditChangeDetector>();
+        services.AddScoped<CollectionParentChangePromoter>();
         services.AddScoped<IAuditEnricher, AuditEnrichmentFacade>();
         services.TryAddSingleton<IAuditRestrictions, DefaultAuditRestrictions>();
         services.TryAddScoped<IAuditEntryMapper<AuditLogLensEntry>, DefaultAuditLogLensEntryMapper>();

@@ -1,4 +1,6 @@
 using AuditLogLens.Detection.Internal;
+using AuditLogLens.Enrichment.Internal;
+using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +12,12 @@ public class EfAuditChangeDetectorTests
 {
     private static EfAuditChangeDetector CreateDetector()
     {
-        return new EfAuditChangeDetector(new TestAuditRestrictions());
+        return new EfAuditChangeDetector(
+            new TestAuditRestrictions(),
+            new CollectionParentChangePromoter(
+                new AuditEnrichmentPlanResolver(
+                    new StaticAuditDomainEnrichmentPlanProvider(),
+                    new AuditEntityEnricherRegistry([]))));
     }
 
     private static AuditTestDbContext CreateDbContext()

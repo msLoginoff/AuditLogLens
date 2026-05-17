@@ -7,10 +7,14 @@ namespace AuditLogLens.Detection.Internal;
 internal sealed class EfAuditChangeDetector : IAuditChangeDetector
 {
     private readonly IAuditRestrictions _auditRestrictions;
+    private readonly CollectionParentChangePromoter _collectionParentChangePromoter;
 
-    public EfAuditChangeDetector(IAuditRestrictions auditRestrictions)
+    public EfAuditChangeDetector(
+        IAuditRestrictions auditRestrictions,
+        CollectionParentChangePromoter collectionParentChangePromoter)
     {
         _auditRestrictions = auditRestrictions;
+        _collectionParentChangePromoter = collectionParentChangePromoter;
     }
 
     public AuditSaveContext DetectPreSaveChanges(DbContext dbContext)
@@ -43,6 +47,11 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
 
             saveContext.PreSaveChanges.Add(auditChange);
         }
+
+        _collectionParentChangePromoter.Promote(
+            dbContext,
+            saveContext,
+            rule => _auditRestrictions.IsAllowedTable(rule.ParentEntityType.Name));
 
         return saveContext;
     }

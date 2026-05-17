@@ -117,7 +117,7 @@ public sealed class CollectionRule : EnrichmentRule
         return new ParentChangeIndex(
             byKey,
             byEntityReference,
-            FindJoinToParentNavigationName(context));
+            FindJoinToParentNavigationName(context.DbContext));
     }
 
     private IEnumerable<CollectionJoinMatch> GetJoinMatches(
@@ -211,9 +211,11 @@ public sealed class CollectionRule : EnrichmentRule
         return false;
     }
 
-    private string? FindJoinToParentNavigationName(AuditEnrichmentContext context)
+    internal string? FindJoinToParentNavigationName(DbContext dbContext)
     {
-        var joinEntityType = context.DbContext.Model.FindEntityType(JoinEntityType);
+        ArgumentNullException.ThrowIfNull(dbContext);
+
+        var joinEntityType = dbContext.Model.FindEntityType(JoinEntityType);
         var foreignKey = joinEntityType?
             .GetForeignKeys()
             .FirstOrDefault(foreignKey =>
@@ -243,19 +245,18 @@ public sealed class CollectionRule : EnrichmentRule
 
     private object? GetParentKey(AuditChange change)
     {
-        if (change.Entry is null)
+        if (change.Entry?.Metadata.FindProperty(ParentKeyPropertyName) is not null)
         {
-            throw new InvalidOperationException(
-                $"Collection enrichment for {change.EntityType.FullName} requires AuditChange.Entry to read parent key '{ParentKeyPropertyName}'.");
+            return change.Entry.Property(ParentKeyPropertyName).CurrentValue;
         }
 
-        if (change.Entry.Metadata.FindProperty(ParentKeyPropertyName) is null)
+        if (change.TryGetSyntheticKeyValue(ParentKeyPropertyName, out var key))
         {
-            throw new InvalidOperationException(
-                $"Property '{ParentKeyPropertyName}' was not found on parent entity type {change.Entry.Metadata.ClrType.FullName}.");
+            return key;
         }
 
-        return change.Entry.Property(ParentKeyPropertyName).CurrentValue;
+        throw new InvalidOperationException(
+            $"Collection enrichment for {change.EntityType.FullName} requires parent key '{ParentKeyPropertyName}' from AuditChange.Entry or synthetic key values.");
     }
 
     private object? GetJoinParentKey(AuditTrackedEntry entry)

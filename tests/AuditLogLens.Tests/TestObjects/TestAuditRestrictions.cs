@@ -13,6 +13,8 @@ public sealed class TestAuditRestrictions : AuditRestrictionsBase
 
         rules.For<CollectionParentEntity>();
 
+        rules.For<PolymorphicVisitEvent>();
+
         rules.For<SpecialDeleteEntity>();
     }
 
