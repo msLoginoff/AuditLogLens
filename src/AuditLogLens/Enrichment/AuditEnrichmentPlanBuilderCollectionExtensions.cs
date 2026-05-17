@@ -29,6 +29,7 @@ public static class AuditEnrichmentPlanBuilderCollectionExtensions
 
         return builder.AddRule(new CollectionRule
         {
+            ParentEntityType = typeof(TSource),
             JoinEntityType = typeof(TJoin),
             ItemEntityType = typeof(TItem),
             ParentKeyPropertyName = GetDefaultKeyPropertyName<TSource>(),
@@ -62,6 +63,7 @@ public static class AuditEnrichmentPlanBuilderCollectionExtensions
 
         return builder.AddRule(new CollectionRule
         {
+            ParentEntityType = typeof(TSource),
             JoinEntityType = typeof(TJoin),
             ItemEntityType = typeof(TItem),
             ParentKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(parentKey),

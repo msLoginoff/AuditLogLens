@@ -8,6 +8,8 @@ namespace AuditLogLens.Enrichment.Rules;
 
 public sealed class CollectionRule : EnrichmentRule
 {
+    public required Type ParentEntityType { get; init; }
+
     public required Type JoinEntityType { get; init; }
 
     public required Type ItemEntityType { get; init; }
@@ -115,7 +117,7 @@ public sealed class CollectionRule : EnrichmentRule
         return new ParentChangeIndex(
             byKey,
             byEntityReference,
-            FindJoinToParentNavigationName(changes, context));
+            FindJoinToParentNavigationName(context));
     }
 
     private IEnumerable<CollectionJoinMatch> GetJoinMatches(
@@ -209,15 +211,8 @@ public sealed class CollectionRule : EnrichmentRule
         return false;
     }
 
-    private string? FindJoinToParentNavigationName(
-        IReadOnlyList<AuditChange> changes,
-        AuditEnrichmentContext context)
+    private string? FindJoinToParentNavigationName(AuditEnrichmentContext context)
     {
-        var parentEntityTypes = changes
-            .Select(change => change.EntityType)
-            .Distinct()
-            .ToList();
-
         var joinEntityType = context.DbContext.Model.FindEntityType(JoinEntityType);
         var foreignKey = joinEntityType?
             .GetForeignKeys()
@@ -225,8 +220,7 @@ public sealed class CollectionRule : EnrichmentRule
                 foreignKey.DependentToPrincipal is not null
                 && foreignKey.Properties.Count == 1
                 && foreignKey.Properties[0].Name == JoinParentKeyPropertyName
-                && parentEntityTypes.Any(parentType =>
-                    foreignKey.PrincipalEntityType.ClrType.IsAssignableFrom(parentType)));
+                && foreignKey.PrincipalEntityType.ClrType.IsAssignableFrom(ParentEntityType));
 
         return foreignKey?.DependentToPrincipal?.Name;
     }

@@ -357,6 +357,7 @@ public class AuditEnrichmentFacadeTests
 
         var rule = Assert.IsType<CollectionRule>(Assert.Single(builder.Build().Rules));
 
+        Assert.Equal(typeof(CollectionParentEntity), rule.ParentEntityType);
         Assert.Equal(typeof(CollectionRefEntity), rule.JoinEntityType);
         Assert.Equal(typeof(CollectionLookupEntity), rule.ItemEntityType);
         Assert.Equal(nameof(CollectionParentEntity.Id), rule.ParentKeyPropertyName);
