@@ -53,7 +53,7 @@ public class AuditEnrichmentFacadeTests
         secondChange.NewValues[nameof(SecondSourceEntity.RelatedEntityId)] = 2;
 
         var enricher = new AuditEnrichmentFacade(
-            new TestDomainEnrichmentPlanProvider(),
+            CreatePlanResolver(),
             new AuditEntityEnricherRegistry([]));
 
         await enricher.EnrichAsync(
@@ -92,7 +92,7 @@ public class AuditEnrichmentFacadeTests
         change.NewValues["Name"] = "New";
 
         var enricher = new AuditEnrichmentFacade(
-            new TestDomainEnrichmentPlanProvider(),
+            CreatePlanResolver(),
             new AuditEntityEnricherRegistry([]));
 
         await enricher.EnrichAsync(
@@ -133,7 +133,7 @@ public class AuditEnrichmentFacadeTests
         change.NewValues[nameof(FirstSourceEntity.RelatedEntityId)] = 2;
 
         var enricher = new AuditEnrichmentFacade(
-            new TestDomainEnrichmentPlanProvider(),
+            CreatePlanResolver(),
             new AuditEntityEnricherRegistry([]));
 
         await enricher.EnrichAsync(
@@ -189,7 +189,7 @@ public class AuditEnrichmentFacadeTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var enricher = new AuditEnrichmentFacade(
-            new TestDomainEnrichmentPlanProvider(),
+            CreatePlanResolver(),
             new AuditEntityEnricherRegistry([]));
 
         await enricher.EnrichAsync(
@@ -479,7 +479,7 @@ public class AuditEnrichmentFacadeTests
         IReadOnlyList<AuditTrackedEntry> trackedEntries)
     {
         var enricher = new AuditEnrichmentFacade(
-            new TestDomainEnrichmentPlanProvider(),
+            CreatePlanResolver(),
             new AuditEntityEnricherRegistry([]));
 
         await enricher.EnrichAsync(
@@ -487,6 +487,13 @@ public class AuditEnrichmentFacadeTests
             db,
             trackedEntries,
             TestContext.Current.CancellationToken);
+    }
+
+    private static AuditEnrichmentPlanResolver CreatePlanResolver()
+    {
+        return new AuditEnrichmentPlanResolver(
+            new TestDomainEnrichmentPlanProvider(),
+            new AuditEntityEnricherRegistry([]));
     }
 
     private static void AssertCollectionValue(object? actual, params string[] expected)

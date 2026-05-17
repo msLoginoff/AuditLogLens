@@ -8,14 +8,14 @@ namespace AuditLogLens.Enrichment.Internal;
 
 internal sealed class AuditEnrichmentFacade : IAuditEnricher
 {
-    private readonly IAuditDomainEnrichmentPlanProvider _domainPlanProvider;
+    private readonly AuditEnrichmentPlanResolver _planResolver;
     private readonly AuditEntityEnricherRegistry _enricherRegistry;
 
     public AuditEnrichmentFacade(
-        IAuditDomainEnrichmentPlanProvider domainPlanProvider,
+        AuditEnrichmentPlanResolver planResolver,
         AuditEntityEnricherRegistry enricherRegistry)
     {
-        _domainPlanProvider = domainPlanProvider;
+        _planResolver = planResolver;
         _enricherRegistry = enricherRegistry;
     }
 
@@ -36,7 +36,7 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
         var entityTypes = context.EntityTypes;
         var plansByEntityType = context.EntityTypes.ToDictionary(
             entityType => entityType,
-            BuildCombinedPlan);
+            _planResolver.GetPlan);
 
         var loadRequests = CollectLoadRequests(plansByEntityType, context);
         await EnrichmentDataLoader.LoadAsync(loadRequests, context, cancellationToken)
@@ -53,17 +53,6 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
             await enricher.ApplyAsync(context, cancellationToken).ConfigureAwait(false);
 
         context.MergeBagsToChanges();
-    }
-
-    private AuditEnrichmentPlan BuildCombinedPlan(Type entityType)
-    {
-        var builder = new AuditEnrichmentPlanBuilder()
-            .Merge(_domainPlanProvider.GetPlan(entityType));
-
-        foreach (var enricher in _enricherRegistry.GetEnrichersFor(entityType))
-            enricher.Configure(builder);
-
-        return builder.Build();
     }
 
     private static IReadOnlyList<EntityLoadRequest> CollectLoadRequests(

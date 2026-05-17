@@ -24,9 +24,12 @@ public class AuditDomainEnrichmentConfigTests
         };
         change.NewValues[nameof(DomainConfiguredSourceEntity.RelatedEntityId)] = 10;
 
+        var enricherRegistry = new AuditEntityEnricherRegistry([]);
         var enricher = new AuditEnrichmentFacade(
-            new StaticAuditDomainEnrichmentPlanProvider(),
-            new AuditEntityEnricherRegistry([]));
+            new AuditEnrichmentPlanResolver(
+                new StaticAuditDomainEnrichmentPlanProvider(),
+                enricherRegistry),
+            enricherRegistry);
 
         await enricher.EnrichAsync([change], db, [], TestContext.Current.CancellationToken);
 
