@@ -101,6 +101,7 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
         var auditChange = new AuditChange
         {
             Entry = entry,
+            Entity = entry.Entity,
             EntityType = entry.Metadata.ClrType,
             EntityId = TryGetPrimaryKeyValue(entry),
             State = entry.State.ToString(),

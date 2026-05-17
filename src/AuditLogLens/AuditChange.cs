@@ -25,6 +25,9 @@ public sealed class AuditChange
 
     public EntityEntry? Entry { get; init; }
 
+    // Entry is null for synthetic changes, but Entity may still contain the source object.
+    public object? Entity { get; init; }
+
     internal void SetSyntheticKeyValue(string key, object? value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);

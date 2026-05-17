@@ -33,17 +33,21 @@ internal sealed class CollectionParentChangePromoter
             var canPromoteByScalarParentKey = CanPromoteByScalarParentKey(dbContext, rule);
             foreach (var joinEntry in GetChangedJoinEntries(saveContext, rule))
             {
-                var parentKey = ResolveParentKey(
+                var parent = ResolveParent(
                     rule,
                     joinEntry,
                     joinToParentNavigationName,
                     canPromoteByScalarParentKey);
+                var parentKey = parent?.Key;
                 if (parentKey is null || HasExistingParentChange(saveContext, rule, parentKey))
                 {
                     continue;
                 }
 
-                saveContext.PreSaveChanges.Add(CreateSyntheticParentChange(rule, parentKey));
+                saveContext.PreSaveChanges.Add(CreateSyntheticParentChange(
+                    rule,
+                    parentKey,
+                    parent?.Entity));
             }
         }
     }
@@ -57,7 +61,7 @@ internal sealed class CollectionParentChangePromoter
             .Where(entry => entry.State is EntityState.Added or EntityState.Deleted);
     }
 
-    private static object? ResolveParentKey(
+    private static SyntheticParent? ResolveParent(
         CollectionRule rule,
         AuditTrackedEntry joinEntry,
         string? joinToParentNavigationName,
@@ -71,12 +75,15 @@ internal sealed class CollectionParentChangePromoter
             var parentEntry = joinEntry.Entry.Context.Entry(parentEntity);
             if (parentEntry.State is not EntityState.Detached)
             {
-                return parentEntry.Property(rule.ParentKeyPropertyName).CurrentValue;
+                // Keep the parent object so application enrichers can read domain-specific metadata.
+                return new SyntheticParent(
+                    parentEntry.Property(rule.ParentKeyPropertyName).CurrentValue,
+                    parentEntity);
             }
         }
 
         return canPromoteByScalarParentKey
-            ? joinEntry.GetCurrentValue(rule.JoinParentKeyPropertyName)
+            ? new SyntheticParent(joinEntry.GetCurrentValue(rule.JoinParentKeyPropertyName), null)
             : null;
     }
 
@@ -119,12 +126,14 @@ internal sealed class CollectionParentChangePromoter
 
     private static AuditChange CreateSyntheticParentChange(
         CollectionRule rule,
-        object parentKey)
+        object parentKey,
+        object? parentEntity)
     {
         var change = new AuditChange
         {
             EntityType = rule.ParentEntityType,
             EntityId = parentKey,
+            Entity = parentEntity,
             State = nameof(EntityState.Modified),
             TableName = rule.ParentEntityType.Name,
             IsAfterSavePhase = false
@@ -134,4 +143,8 @@ internal sealed class CollectionParentChangePromoter
 
         return change;
     }
+
+    private sealed record SyntheticParent(
+        object? Key,
+        object? Entity);
 }
