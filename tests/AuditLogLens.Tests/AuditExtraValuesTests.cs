@@ -52,4 +52,34 @@ public class AuditExtraValuesTests
         Assert.Equal(42, change.ExtraValues["PatientId"]);
         Assert.False(bag.HasAnyValues());
     }
+
+    [Fact]
+    public void BagRemove_RemovesValuesByKeyBeforeMerge()
+    {
+        var change = new AuditChange
+        {
+            EntityType = typeof(AllowedEntity),
+            State = nameof(EntityState.Modified)
+        };
+        using var db = new AuditTestDbContext(
+            new DbContextOptionsBuilder<AuditTestDbContext>()
+                .Options);
+        var context = new AuditEnrichmentContext([change], db, []);
+
+        var bag = context.GetBagForChange(change);
+        bag.SetOld("Raw", "Old");
+        bag.SetNew("Raw", "New");
+        bag.SetExtraValue("Raw", 42);
+        bag.SetNew("Keep", "Kept");
+
+        Assert.True(bag.Remove("Raw"));
+        Assert.False(bag.Remove("Missing"));
+
+        context.MergeBagsToChanges();
+
+        Assert.False(change.OldValues.ContainsKey("Raw"));
+        Assert.False(change.NewValues.ContainsKey("Raw"));
+        Assert.False(change.ExtraValues.ContainsKey("Raw"));
+        Assert.Equal("Kept", change.NewValues["Keep"]);
+    }
 }

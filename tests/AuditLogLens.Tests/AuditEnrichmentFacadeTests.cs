@@ -1,6 +1,7 @@
 using System.Data.Common;
 using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment;
+using AuditLogLens.Enrichment.Context;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Enrichment.Rules;
@@ -258,6 +259,68 @@ public class AuditEnrichmentFacadeTests
         Assert.Equal("Related readable", change.NewValues["RelatedName"]);
         Assert.Equal("Nested readable", change.NewValues["NestedRelatedName"]);
         Assert.Equal(1, commandCounter.ReaderCommands);
+    }
+
+    [Fact]
+    public async Task EnrichAsync_RunsAllEnricherBeforeMergeHooksBeforeMergingBags()
+    {
+        await using var db = CreateDbContext();
+
+        var change = new AuditChange
+        {
+            EntityType = typeof(FirstSourceEntity),
+            State = nameof(EntityState.Modified)
+        };
+
+        var enricher = new AuditEnrichmentFacade(
+            CreatePlanResolver(AuditEnrichmentPlan.Empty),
+            new AuditEntityEnricherRegistry([
+                new FirstBeforeMergeEnricher(),
+                new SecondBeforeMergeEnricher(),
+                new AfterMergeEnricher()
+            ]));
+
+        await enricher.EnrichAsync(
+            [change],
+            db,
+            CaptureTrackedEntries(db),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("first", change.NewValues["First"]);
+        Assert.Equal("second", change.NewValues["Second"]);
+        Assert.Equal("after", change.NewValues["After"]);
+    }
+
+    [Fact]
+    public async Task EnrichAsync_RunsPerChangeHooksForHandledChangesOnly()
+    {
+        await using var db = CreateDbContext();
+
+        var firstChange = new AuditChange
+        {
+            EntityType = typeof(FirstSourceEntity),
+            State = nameof(EntityState.Modified)
+        };
+        var secondChange = new AuditChange
+        {
+            EntityType = typeof(SecondSourceEntity),
+            State = nameof(EntityState.Modified)
+        };
+
+        var enricher = new AuditEnrichmentFacade(
+            CreatePlanResolver(AuditEnrichmentPlan.Empty),
+            new AuditEntityEnricherRegistry([new PerChangeEnricher()]));
+
+        await enricher.EnrichAsync(
+            [firstChange, secondChange],
+            db,
+            CaptureTrackedEntries(db),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("before", firstChange.NewValues["PerChangeBefore"]);
+        Assert.Equal("after", firstChange.NewValues["PerChangeAfter"]);
+        Assert.False(secondChange.NewValues.ContainsKey("PerChangeBefore"));
+        Assert.False(secondChange.NewValues.ContainsKey("PerChangeAfter"));
     }
 
     [Fact]
@@ -666,6 +729,90 @@ public class AuditEnrichmentFacadeTests
         {
             ReaderCommands++;
             return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class FirstBeforeMergeEnricher : AuditEntityEnricherBase
+    {
+        public override bool CanHandle(Type entityType) => entityType == typeof(FirstSourceEntity);
+
+        protected override Task BeforeMergeAsync(
+            AuditEnrichmentContext context,
+            CancellationToken cancellationToken = default)
+        {
+            var change = Assert.Single(context.GetChangesOfType(typeof(FirstSourceEntity)));
+            context.GetBagForChange(change).SetNew("First", "first");
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class SecondBeforeMergeEnricher : AuditEntityEnricherBase
+    {
+        public override bool CanHandle(Type entityType) => entityType == typeof(FirstSourceEntity);
+
+        protected override Task BeforeMergeAsync(
+            AuditEnrichmentContext context,
+            CancellationToken cancellationToken = default)
+        {
+            var change = Assert.Single(context.GetChangesOfType(typeof(FirstSourceEntity)));
+            var bag = context.GetBagForChange(change);
+
+            Assert.True(bag.TryGetNewValue("First", out var firstValue));
+            Assert.Equal("first", firstValue);
+            Assert.False(change.NewValues.ContainsKey("First"));
+
+            bag.SetNew("Second", "second");
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class AfterMergeEnricher : AuditEntityEnricherBase
+    {
+        public override bool CanHandle(Type entityType) => entityType == typeof(FirstSourceEntity);
+
+        protected override Task AfterMergeAsync(
+            AuditEnrichmentContext context,
+            CancellationToken cancellationToken = default)
+        {
+            var change = Assert.Single(context.GetChangesOfType(typeof(FirstSourceEntity)));
+            var bag = context.GetBagForChange(change);
+
+            Assert.False(bag.HasAnyValues());
+            Assert.Equal("first", change.NewValues["First"]);
+            Assert.Equal("second", change.NewValues["Second"]);
+
+            change.NewValues["After"] = "after";
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class PerChangeEnricher : AuditEntityEnricherBase
+    {
+        public override bool CanHandle(Type entityType) => entityType == typeof(FirstSourceEntity);
+
+        protected override Task BeforeMergeChangeAsync(
+            AuditEnrichmentContext context,
+            AuditChange change,
+            AuditEnrichmentBag bag,
+            CancellationToken cancellationToken = default)
+        {
+            bag.SetNew("PerChangeBefore", "before");
+            return Task.CompletedTask;
+        }
+
+        protected override Task AfterMergeChangeAsync(
+            AuditEnrichmentContext context,
+            AuditChange change,
+            CancellationToken cancellationToken = default)
+        {
+            Assert.Equal("before", change.NewValues["PerChangeBefore"]);
+            Assert.False(context.GetBagForChange(change).HasAnyValues());
+
+            change.NewValues["PerChangeAfter"] = "after";
+            return Task.CompletedTask;
         }
     }
 }

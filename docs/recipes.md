@@ -139,7 +139,9 @@ using AuditLogLens.Enrichment;
 
 public sealed class AuditMetadataEnricher : AuditEntityEnricherBase
 {
-    protected override Task ApplyCustomAsync(
+    public override bool CanHandle(Type entityType) => true;
+
+    protected override Task BeforeMergeAsync(
         AuditEnrichmentContext context,
         CancellationToken cancellationToken)
     {

@@ -89,7 +89,7 @@ Limitations in the current version:
 
 Use an application enricher when the data does not belong to one domain entity, or when it depends on application services.
 
-Application enrichers should inherit from `AuditEntityEnricherBase`. The base class owns the template method and flushes enrichment bags into `AuditChange`.
+Application enrichers should inherit from `AuditEntityEnricherBase`. The facade owns the global enrichment order, while the base class gives you template-method hooks before and after bags are merged into `AuditChange`.
 
 ```csharp
 using AuditLogLens.Enrichment;
@@ -99,7 +99,7 @@ public sealed class AuditMetadataEnricher : AuditEntityEnricherBase
 {
     public override bool CanHandle(Type entityType) => true;
 
-    protected override Task ApplyCustomAsync(
+    protected override Task BeforeMergeAsync(
         AuditEnrichmentContext context,
         CancellationToken cancellationToken = default)
     {

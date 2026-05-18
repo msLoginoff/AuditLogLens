@@ -48,11 +48,16 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
             ApplyRules(entityType, plan, context);
         }
 
+        var enrichers = _enricherRegistry.GetDistinctEnrichersFor(entityTypes);
+
         // Entity enrichers run once per save operation, even if they handle several entity types
-        foreach (var enricher in _enricherRegistry.GetDistinctEnrichersFor(entityTypes))
-            await enricher.ApplyAsync(context, cancellationToken).ConfigureAwait(false);
+        foreach (var enricher in enrichers)
+            await enricher.ApplyBeforeMergeAsync(context, cancellationToken).ConfigureAwait(false);
 
         context.MergeBagsToChanges();
+
+        foreach (var enricher in enrichers)
+            await enricher.ApplyAfterMergeAsync(context, cancellationToken).ConfigureAwait(false);
     }
 
     private static IReadOnlyList<EntityLoadRequest> CollectLoadRequests(

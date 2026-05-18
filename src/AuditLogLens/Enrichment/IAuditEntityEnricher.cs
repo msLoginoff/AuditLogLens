@@ -8,5 +8,7 @@ public interface IAuditEntityEnricher
 
     void Configure(IAuditEnrichmentPlanBuilder builder);
 
-    Task ApplyAsync(AuditEnrichmentContext context, CancellationToken cancellationToken = default);
+    Task ApplyBeforeMergeAsync(AuditEnrichmentContext context, CancellationToken cancellationToken = default);
+
+    Task ApplyAfterMergeAsync(AuditEnrichmentContext context, CancellationToken cancellationToken = default);
 }

@@ -30,6 +30,35 @@ public sealed class AuditEnrichmentBag
         _extraValues[key] = value;
     }
 
+    public bool RemoveOld(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return _oldValues.Remove(key);
+    }
+
+    public bool RemoveNew(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return _newValues.Remove(key);
+    }
+
+    public bool RemoveExtraValue(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return _extraValues.Remove(key);
+    }
+
+    public bool Remove(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        var removed = _oldValues.Remove(key);
+        removed = _newValues.Remove(key) || removed;
+        removed = _extraValues.Remove(key) || removed;
+
+        return removed;
+    }
+
     internal void Clear()
     {
         _oldValues.Clear();
