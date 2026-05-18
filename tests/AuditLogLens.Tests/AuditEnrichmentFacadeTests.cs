@@ -1,3 +1,4 @@
+using System.Data.Common;
 using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Internal;
@@ -7,6 +8,7 @@ using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Xunit;
 
 namespace AuditLogLens.Tests;
@@ -23,6 +25,25 @@ public class AuditEnrichmentFacadeTests
             .Options;
 
         var db = new AuditTestDbContext(options);
+        db.Database.EnsureCreated();
+
+        return db;
+    }
+
+    private static AuditTestDbContext CreateDbContext(params IInterceptor[] interceptors)
+    {
+        var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var optionsBuilder = new DbContextOptionsBuilder<AuditTestDbContext>()
+            .UseSqlite(connection);
+
+        if (interceptors.Length > 0)
+        {
+            optionsBuilder.AddInterceptors(interceptors);
+        }
+
+        var db = new AuditTestDbContext(optionsBuilder.Options);
         db.Database.EnsureCreated();
 
         return db;
@@ -186,6 +207,57 @@ public class AuditEnrichmentFacadeTests
             TestContext.Current.CancellationToken);
 
         Assert.Equal("Nested readable", change.NewValues["NestedRelatedName"]);
+    }
+
+    [Fact]
+    public async Task EnrichAsync_BatchesReferenceRulesWithIncludesForSameTargetAndKey()
+    {
+        var commandCounter = new DbCommandCounterInterceptor();
+        await using var db = CreateDbContext(commandCounter);
+
+        db.NestedRelatedEntities.Add(new NestedRelatedEntity { Id = 10, Name = "Nested readable" });
+        db.RelatedEntities.Add(new RelatedEntity
+        {
+            Id = 1,
+            Name = "Related readable",
+            NestedRelatedId = 10
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        db.ChangeTracker.Clear();
+        commandCounter.Reset();
+
+        var change = new AuditChange
+        {
+            EntityType = typeof(FirstSourceEntity),
+            State = nameof(EntityState.Added)
+        };
+        change.NewValues[nameof(FirstSourceEntity.RelatedEntityId)] = 1;
+
+        var builder = new AuditEnrichmentPlanBuilder();
+        builder
+            .Reference<FirstSourceEntity, RelatedEntity, int>(
+                source => source.RelatedEntityId,
+                "RelatedName",
+                related => related.Name)
+            .Reference<FirstSourceEntity, RelatedEntity, int>(
+                source => source.RelatedEntityId,
+                "NestedRelatedName",
+                related => related.NestedRelated == null ? null : related.NestedRelated.Name,
+                options => options.Include(related => related.NestedRelated));
+
+        var enricher = new AuditEnrichmentFacade(
+            CreatePlanResolver(builder.Build()),
+            new AuditEntityEnricherRegistry([]));
+
+        await enricher.EnrichAsync(
+            [change],
+            db,
+            CaptureTrackedEntries(db),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("Related readable", change.NewValues["RelatedName"]);
+        Assert.Equal("Nested readable", change.NewValues["NestedRelatedName"]);
+        Assert.Equal(1, commandCounter.ReaderCommands);
     }
 
     [Fact]
@@ -565,6 +637,35 @@ public class AuditEnrichmentFacadeTests
             return entityType == typeof(FirstSourceEntity)
                 ? _plan
                 : AuditEnrichmentPlan.Empty;
+        }
+    }
+
+    private sealed class DbCommandCounterInterceptor : DbCommandInterceptor
+    {
+        public int ReaderCommands { get; private set; }
+
+        public void Reset()
+        {
+            ReaderCommands = 0;
+        }
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result)
+        {
+            ReaderCommands++;
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            ReaderCommands++;
+            return ValueTask.FromResult(result);
         }
     }
 }
