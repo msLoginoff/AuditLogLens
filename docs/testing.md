@@ -2,10 +2,16 @@
 
 AuditLogLens has tests for the core pipeline.
 
-Run tests with:
+Build tests with:
 
 ```bash
-dotnet run --project tests/AuditLogLens.Tests/AuditLogLens.Tests.csproj --no-build
+dotnet build tests/AuditLogLens.Tests/AuditLogLens.Tests.csproj --no-restore
+```
+
+Run the xUnit v3 in-process test assembly:
+
+```bash
+dotnet tests/AuditLogLens.Tests/bin/Debug/net10.0/AuditLogLens.Tests.dll
 ```
 
 In some restricted environments `dotnet test` can fail because the VSTest runner opens a local socket. The xUnit in-process runner avoids that issue.
@@ -22,6 +28,9 @@ The test suite covers:
 - recursive audit suppression;
 - custom restrictions registration;
 - domain enrichment config;
+- batched reference enrichment;
+- collection enrichment for explicit join entities;
+- application enricher template hooks;
 - extra values;
 - transactional rollback on audit write failure;
 - parallel save operations with shared service provider.

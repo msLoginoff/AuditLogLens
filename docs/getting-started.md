@@ -93,7 +93,7 @@ public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
 {
     public bool CanMap(DbContext dbContext) => dbContext is AppDbContext;
 
-    public AuditRecord Map(AuditChange change, DbContext dbContext)
+    public AuditRecord? Map(AuditChange change, DbContext dbContext)
     {
         return new AuditRecord
         {

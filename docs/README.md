@@ -5,7 +5,7 @@ Use this folder as the main entry point for AuditLogLens documentation.
 ## Start Here
 
 - [Getting Started](getting-started.md): minimal setup with the default audit table.
-- [Enrichment](enrichment.md): how to replace raw ids with readable values.
+- [Enrichment](enrichment.md): how to replace raw ids with readable values and use application enricher hooks.
 - [Restrictions](restrictions.md): how to choose which entities and properties are audited.
 - [Writing Audit Records](writing.md): default audit entity, custom audit entity, and mapping.
 - [Transactions](transactions.md): non-transactional and transactional write modes.

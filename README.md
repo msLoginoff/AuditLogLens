@@ -67,7 +67,7 @@ public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
 {
     public bool CanMap(DbContext dbContext) => dbContext is AppDbContext;
 
-    public AuditRecord Map(AuditChange change, DbContext dbContext)
+    public AuditRecord? Map(AuditChange change, DbContext dbContext)
     {
         return new AuditRecord
         {
@@ -146,6 +146,18 @@ DoctorName = "Dr. Smith"
 
 AuditLogLens batches enrichment loads across all changes first. This helps avoid the common N+1 shape when many audit records need the same related data.
 
+Application-level enrichers can also add metadata or reshape values through `AuditEntityEnricherBase`. It uses template-method hooks around the single bag merge:
+
+```text
+BeforeMergeAsync
+BeforeMergeChangeAsync
+merge bags into AuditChange
+AfterMergeChangeAsync
+AfterMergeAsync
+```
+
+Use per-change hooks for simple one-change logic. Use whole-context hooks when you need grouping, cross-change correlation, or application services.
+
 ## Documentation
 
 Start here:
@@ -179,6 +191,7 @@ The current version has:
 - Added, modified, and deleted entity detection.
 - Added-entity temporary key handling.
 - Declarative enrichment with batched reference loading.
+- Collection enrichment for explicit join entities.
 - Custom application enrichers.
 - Default EF writer with recursion suppression.
 - Optional transactional audit writing.

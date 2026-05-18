@@ -38,7 +38,7 @@ It combines:
 
 - domain-level config from `IHasAuditEnrichmentConfig<TSelf>`;
 - application enrichers based on `AuditEntityEnricherBase`;
-- reference rules and custom steps.
+- reference, collection, override, and custom-step rules.
 
 The important performance detail is global batching:
 
@@ -49,6 +49,23 @@ The important performance detail is global batching:
 5. Apply rules.
 
 This avoids loading the same reference data separately for every audit change.
+
+Application enrichers run around one official bag merge:
+
+```text
+all BeforeMerge hooks
+merge bags into AuditChange
+all AfterMerge hooks
+```
+
+`AuditEntityEnricherBase` uses a template method inside those phases:
+
+- `BeforeMergeAsync(context)` for whole-save logic before the merge.
+- `BeforeMergeChangeAsync(context, change, bag)` for simple per-change logic before the merge.
+- `AfterMergeChangeAsync(context, change)` for simple per-change logic after the merge.
+- `AfterMergeAsync(context)` for whole-save logic after the merge.
+
+The per-change hooks run only for changes accepted by `CanHandle`.
 
 ## Map
 
@@ -64,6 +81,7 @@ The default writer uses EF Core.
 
 It:
 
+- skips changes that still have no old/new values;
 - maps audit changes;
 - adds audit entities to the current `DbContext`;
 - calls `SaveChanges`;

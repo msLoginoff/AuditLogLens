@@ -77,10 +77,13 @@ Returning `null` skips writing an audit record for that change.
 
 The default EF writer:
 
+- skips changes that still have no `OldValues` and no `NewValues`;
 - maps each `AuditChange`;
 - adds mapped entries to the current `DbContext`;
 - calls `SaveChanges`;
 - suppresses recursive audit logging for the audit save itself.
+
+`ExtraValues` alone do not create an audit record. They are metadata for a record that already has old or new values.
 
 Register the custom writer:
 
@@ -103,7 +106,7 @@ change.TryGetExtraValue<string>("UserId", out var userId);
 Example:
 
 ```csharp
-public AuditRecord Map(AuditChange change, DbContext dbContext)
+public AuditRecord? Map(AuditChange change, DbContext dbContext)
 {
     change.TryGetExtraValue<int>("TenantId", out var tenantId);
     change.TryGetExtraValue<string>("UserId", out var userId);

@@ -85,7 +85,7 @@ public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
 {
     public bool CanMap(DbContext dbContext) => dbContext is AppDbContext;
 
-    public AuditRecord Map(AuditChange change, DbContext dbContext)
+    public AuditRecord? Map(AuditChange change, DbContext dbContext)
     {
         return new AuditRecord
         {
@@ -135,20 +135,21 @@ AuditLogLens batches reference loading across all changes before applying enrich
 Use an application enricher when data does not belong to one domain entity:
 
 ```csharp
+using AuditLogLens;
 using AuditLogLens.Enrichment;
+using AuditLogLens.Enrichment.Context;
 
 public sealed class AuditMetadataEnricher : AuditEntityEnricherBase
 {
     public override bool CanHandle(Type entityType) => true;
 
-    protected override Task BeforeMergeAsync(
+    protected override Task BeforeMergeChangeAsync(
         AuditEnrichmentContext context,
+        AuditChange change,
+        AuditEnrichmentBag bag,
         CancellationToken cancellationToken)
     {
-        foreach (var change in context.Changes)
-        {
-            change.SetExtraValue("UserId", "current-user-id");
-        }
+        bag.SetExtraValue("UserId", "current-user-id");
 
         return Task.CompletedTask;
     }
