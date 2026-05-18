@@ -92,6 +92,28 @@ public sealed class AuditEnrichmentContext
             : Array.Empty<object>();
     }
 
+    public IReadOnlyList<T> GetLoaded<T>(string propertyName) where T : class
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
+
+        var entities = GetLoadedEntities(typeof(T), propertyName);
+        if (entities.Count == 0)
+        {
+            return Array.Empty<T>();
+        }
+
+        var result = new List<T>(entities.Count);
+        foreach (var entity in entities)
+        {
+            if (entity is T typed)
+            {
+                result.Add(typed);
+            }
+        }
+
+        return result;
+    }
+
     internal void MergeBagsToChanges()
     {
         foreach (var change in Changes)
