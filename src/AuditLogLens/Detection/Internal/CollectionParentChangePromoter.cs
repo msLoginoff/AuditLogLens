@@ -36,6 +36,7 @@ internal sealed class CollectionParentChangePromoter
                 var parent = ResolveParent(
                     rule,
                     joinEntry,
+                    saveContext.TrackedEntries,
                     joinToParentNavigationName,
                     canPromoteByScalarParentKey);
                 var parentKey = parent?.Key;
@@ -64,6 +65,7 @@ internal sealed class CollectionParentChangePromoter
     private static SyntheticParent? ResolveParent(
         CollectionRule rule,
         AuditTrackedEntry joinEntry,
+        IReadOnlyCollection<AuditTrackedEntry> trackedEntries,
         string? joinToParentNavigationName,
         bool canPromoteByScalarParentKey)
     {
@@ -82,9 +84,43 @@ internal sealed class CollectionParentChangePromoter
             }
         }
 
+        var trackedParent = ResolveTrackedParentByScalarKey(rule, joinEntry, trackedEntries);
+        if (trackedParent is not null)
+        {
+            return trackedParent;
+        }
+
         return canPromoteByScalarParentKey
             ? new SyntheticParent(joinEntry.GetCurrentValue(rule.JoinParentKeyPropertyName), null)
             : null;
+    }
+
+    private static SyntheticParent? ResolveTrackedParentByScalarKey(
+        CollectionRule rule,
+        AuditTrackedEntry joinEntry,
+        IEnumerable<AuditTrackedEntry> trackedEntries)
+    {
+        var parentKey = joinEntry.GetCurrentValue(rule.JoinParentKeyPropertyName);
+        if (parentKey is null)
+        {
+            return null;
+        }
+
+        foreach (var trackedEntry in trackedEntries)
+        {
+            if (!rule.ParentEntityType.IsAssignableFrom(trackedEntry.EntityType))
+            {
+                continue;
+            }
+
+            var trackedParentKey = trackedEntry.GetCurrentValue(rule.ParentKeyPropertyName);
+            if (Equals(trackedParentKey, parentKey))
+            {
+                return new SyntheticParent(parentKey, trackedEntry.Entity);
+            }
+        }
+
+        return null;
     }
 
     private static bool CanPromoteByScalarParentKey(DbContext dbContext, CollectionRule rule)

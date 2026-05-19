@@ -378,6 +378,45 @@ public class EfAuditChangeDetectorTests
     }
 
     [Fact]
+    public void DetectPreSaveChanges_WhenPolymorphicCollectionParentIsTracked_PromotesByDerivedParent()
+    {
+        using var db = CreateDbContext();
+        var detector = CreateDetector();
+
+        db.CollectionLookupEntities.Add(new CollectionLookupEntity
+        {
+            Id = 10,
+            Name = "Tag"
+        });
+        db.PolymorphicVisitEvents.Add(new PolymorphicVisitEvent
+        {
+            Name = "Visit"
+        });
+        db.SaveChanges();
+
+        var visitId = db.PolymorphicVisitEvents.Select(x => x.Id).Single();
+        db.PolymorphicCollectionRefEntities.Add(new PolymorphicCollectionRefEntity
+        {
+            EventId = visitId,
+            LookupId = 10
+        });
+        db.SaveChanges();
+        db.ChangeTracker.Clear();
+
+        var visit = db.PolymorphicVisitEvents.Single();
+        var reference = db.PolymorphicCollectionRefEntities.Single();
+        db.PolymorphicCollectionRefEntities.Remove(reference);
+
+        var saveContext = detector.DetectPreSaveChanges(db);
+
+        var change = Assert.Single(saveContext.PreSaveChanges);
+        Assert.Equal(typeof(PolymorphicVisitEvent), change.EntityType);
+        Assert.Equal(nameof(EntityState.Modified), change.State);
+        Assert.Equal(visit.Id, change.EntityId);
+        Assert.Same(visit, change.Entity);
+    }
+
+    [Fact]
     public void DetectPostSaveChanges_WhenNoTemporaryKeys_ReturnsSameChangesWithoutModifications()
     {
         using var db = CreateDbContext();
