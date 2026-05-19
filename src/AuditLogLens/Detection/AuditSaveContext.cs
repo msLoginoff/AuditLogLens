@@ -10,7 +10,7 @@ public sealed class AuditSaveContext
 
     public List<AuditChange> PreSaveChanges { get; } = new();
 
-    public List<EntityEntry> EntriesWithTemporaryKeys { get; } = new();
+    internal List<EntityEntryWithTemporaryValues> EntriesWithTemporaryValues { get; } = new();
 
     internal IReadOnlyList<AuditTrackedEntry> TrackedEntries => _trackedEntries;
 

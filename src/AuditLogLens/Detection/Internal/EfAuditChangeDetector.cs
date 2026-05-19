@@ -40,9 +40,10 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
                 continue;
             }
 
-            if (HasTemporaryKey(entry))
+            var temporaryValues = GetTemporaryValues(entry, auditChange);
+            if (temporaryValues.HasTemporaryKey || temporaryValues.HasAuditedTemporaryValues)
             {
-                saveContext.EntriesWithTemporaryKeys.Add(entry);
+                saveContext.EntriesWithTemporaryValues.Add(temporaryValues);
             }
 
             saveContext.PreSaveChanges.Add(auditChange);
@@ -65,23 +66,33 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
 
         var result = saveContext.PreSaveChanges;
 
-        if (saveContext.EntriesWithTemporaryKeys.Count == 0)
+        if (saveContext.EntriesWithTemporaryValues.Count == 0)
         {
             return result;
         }
 
-        foreach (var entry in saveContext.EntriesWithTemporaryKeys)
+        foreach (var temporaryValues in saveContext.EntriesWithTemporaryValues)
         {
+            var entry = temporaryValues.Entry;
             var existingChange = result.FirstOrDefault(x => ReferenceEquals(x.Entry, entry));
             if (existingChange is null)
             {
                 continue;
             }
 
-            existingChange.EntityId = TryGetPrimaryKeyValue(entry);
-            existingChange.IsAfterSavePhase = true;
+            if (temporaryValues.HasTemporaryKey)
+            {
+                existingChange.EntityId = TryGetPrimaryKeyValue(entry);
+                existingChange.IsAfterSavePhase = true;
+            }
 
-            RefreshAddedNewValues(existingChange, entry);
+            if (temporaryValues.HasAuditedTemporaryValues)
+            {
+                RefreshAddedTemporaryNewValues(
+                    existingChange,
+                    entry,
+                    temporaryValues.AuditedTemporaryPropertyNames);
+            }
         }
 
         return result;
@@ -93,7 +104,10 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
     // value onto the tracked entry post-save — re-snapshot here so NewValues reflects
     // it. We only refresh keys already present (restrictions filtering happened at
     // PreSave; we update existing values without changing the audited key set).
-    private static void RefreshAddedNewValues(AuditChange change, EntityEntry entry)
+    private static void RefreshAddedTemporaryNewValues(
+        AuditChange change,
+        EntityEntry entry,
+        IReadOnlySet<string> temporaryPropertyNames)
     {
         if (change.State != nameof(EntityState.Added))
         {
@@ -108,6 +122,11 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
             }
 
             var propertyName = property.Metadata.Name;
+            if (!temporaryPropertyNames.Contains(propertyName))
+            {
+                continue;
+            }
+
             if (!change.NewValues.ContainsKey(propertyName))
             {
                 continue;
@@ -185,9 +204,36 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
         return auditChange;
     }
 
-    private static bool HasTemporaryKey(EntityEntry entry)
+    private static EntityEntryWithTemporaryValues GetTemporaryValues(
+        EntityEntry entry,
+        AuditChange change)
     {
-        return entry.Properties.Any(p => p.Metadata.IsPrimaryKey() && p.IsTemporary);
+        var hasTemporaryKey = false;
+        var auditedTemporaryPropertyNames = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var property in entry.Properties)
+        {
+            if (!property.IsTemporary)
+            {
+                continue;
+            }
+
+            if (property.Metadata.IsPrimaryKey())
+            {
+                hasTemporaryKey = true;
+            }
+
+            if (change.State == nameof(EntityState.Added)
+                && change.NewValues.ContainsKey(property.Metadata.Name))
+            {
+                auditedTemporaryPropertyNames.Add(property.Metadata.Name);
+            }
+        }
+
+        return new EntityEntryWithTemporaryValues(
+            entry,
+            hasTemporaryKey,
+            auditedTemporaryPropertyNames);
     }
 
     private static object? TryGetPrimaryKeyValue(EntityEntry entry)

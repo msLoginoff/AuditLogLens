@@ -63,7 +63,7 @@ public class EfAuditChangeDetectorTests
         Assert.False(change.NewValues.ContainsKey(nameof(AllowedEntity.Secret)));
         Assert.Empty(change.OldValues);
 
-        Assert.Single(saveContext.EntriesWithTemporaryKeys);
+        Assert.Single(saveContext.EntriesWithTemporaryValues);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class EfAuditChangeDetectorTests
         var saveContext = detector.DetectPreSaveChanges(db);
 
         Assert.Empty(saveContext.PreSaveChanges);
-        Assert.Empty(saveContext.EntriesWithTemporaryKeys);
+        Assert.Empty(saveContext.EntriesWithTemporaryValues);
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class EfAuditChangeDetectorTests
         var saveContext = detector.DetectPreSaveChanges(db);
 
         Assert.Single(saveContext.PreSaveChanges);
-        Assert.Single(saveContext.EntriesWithTemporaryKeys);
+        Assert.Single(saveContext.EntriesWithTemporaryValues);
 
         var preSaveChange = saveContext.PreSaveChanges[0];
         Assert.NotNull(preSaveChange.EntityId);
@@ -222,6 +222,50 @@ public class EfAuditChangeDetectorTests
         var realId = Assert.IsType<int>(postSaveChange.EntityId);
         Assert.True(realId > 0);
         Assert.NotEqual(temporaryId, realId);
+    }
+
+    [Fact]
+    public void DetectPostSaveChanges_ForAddedEntityWithAuditedTemporaryForeignKey_RefreshesNewValue()
+    {
+        using var db = CreateDbContext();
+        var detector = CreateDetector();
+
+        var nested = new NestedRelatedEntity
+        {
+            Name = "Nested"
+        };
+        var related = new RelatedEntity
+        {
+            Id = 123,
+            Name = "Related",
+            NestedRelated = nested
+        };
+
+        db.RelatedEntities.Add(related);
+
+        var saveContext = detector.DetectPreSaveChanges(db);
+
+        var preSaveChange = Assert.Single(saveContext.PreSaveChanges);
+        Assert.Equal(nameof(RelatedEntity), preSaveChange.EntityType.Name);
+        Assert.Single(saveContext.EntriesWithTemporaryValues);
+        Assert.Equal(123, preSaveChange.EntityId);
+
+        var temporaryForeignKey = Assert.IsType<int>(
+            preSaveChange.NewValues[nameof(RelatedEntity.NestedRelatedId)]);
+        Assert.True(temporaryForeignKey <= 0);
+
+        db.SaveChanges();
+
+        var changes = detector.DetectPostSaveChanges(db, saveContext);
+
+        var postSaveChange = Assert.Single(changes);
+        var realForeignKey = Assert.IsType<int>(
+            postSaveChange.NewValues[nameof(RelatedEntity.NestedRelatedId)]);
+
+        Assert.True(realForeignKey > 0);
+        Assert.Equal(nested.Id, realForeignKey);
+        Assert.Equal(123, postSaveChange.EntityId);
+        Assert.False(postSaveChange.IsAfterSavePhase);
     }
 
     [Fact]
@@ -308,7 +352,7 @@ public class EfAuditChangeDetectorTests
         var saveContext = detector.DetectPreSaveChanges(db);
 
         Assert.Empty(saveContext.PreSaveChanges);
-        Assert.Empty(saveContext.EntriesWithTemporaryKeys);
+        Assert.Empty(saveContext.EntriesWithTemporaryValues);
     }
 
     [Fact]
@@ -330,7 +374,7 @@ public class EfAuditChangeDetectorTests
         var saveContext = detector.DetectPreSaveChanges(db);
 
         Assert.Empty(saveContext.PreSaveChanges);
-        Assert.Empty(saveContext.EntriesWithTemporaryKeys);
+        Assert.Empty(saveContext.EntriesWithTemporaryValues);
     }
 
     [Fact]
@@ -352,7 +396,7 @@ public class EfAuditChangeDetectorTests
         var saveContext = detector.DetectPreSaveChanges(db);
 
         Assert.Single(saveContext.PreSaveChanges);
-        Assert.Empty(saveContext.EntriesWithTemporaryKeys);
+        Assert.Empty(saveContext.EntriesWithTemporaryValues);
 
         var before = saveContext.PreSaveChanges[0];
         var beforeId = before.EntityId;
