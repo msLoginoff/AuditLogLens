@@ -80,9 +80,41 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
 
             existingChange.EntityId = TryGetPrimaryKeyValue(entry);
             existingChange.IsAfterSavePhase = true;
+
+            RefreshAddedNewValues(existingChange, entry);
         }
 
         return result;
+    }
+
+    // For Added entries, properties snapshotted at PreSave may have held temporary FK
+    // values when the referenced entity was also Added in the same save and only got
+    // its real key during the actual INSERT. EF's relationship fixup writes the real
+    // value onto the tracked entry post-save — re-snapshot here so NewValues reflects
+    // it. We only refresh keys already present (restrictions filtering happened at
+    // PreSave; we update existing values without changing the audited key set).
+    private static void RefreshAddedNewValues(AuditChange change, EntityEntry entry)
+    {
+        if (change.State != nameof(EntityState.Added))
+        {
+            return;
+        }
+
+        foreach (var property in entry.Properties)
+        {
+            if (property.Metadata.IsPrimaryKey())
+            {
+                continue;
+            }
+
+            var propertyName = property.Metadata.Name;
+            if (!change.NewValues.ContainsKey(propertyName))
+            {
+                continue;
+            }
+
+            change.NewValues[propertyName] = property.CurrentValue;
+        }
     }
 
     private bool ShouldProcessEntry(EntityEntry entry)
