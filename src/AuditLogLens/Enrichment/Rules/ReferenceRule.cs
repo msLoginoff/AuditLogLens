@@ -43,7 +43,7 @@ public sealed class ReferenceRule : EnrichmentRule
 
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
-        var loadedEntities = context.GetLoadedEntities(TargetEntityType, TargetKeyPropertyName);
+        var loadedEntities = context.GetLoadedEntitiesOf(TargetEntityType, TargetKeyPropertyName);
         var entitiesByKey = LoadedEntityLookup.OneByKey(loadedEntities, GetKeyValue);
 
         foreach (var change in changes)
@@ -53,13 +53,13 @@ public sealed class ReferenceRule : EnrichmentRule
             if (oldFk is not null)
             {
                 if (entitiesByKey.TryGetValue(oldFk, out var oldTarget))
-                    context.GetBagForChange(change).SetOld(FieldName, ValueSelector(oldTarget));
+                    context.GetBagFor(change).SetOld(FieldName, ValueSelector(oldTarget));
             }
 
             if (newFk is not null)
             {
                 if (entitiesByKey.TryGetValue(newFk, out var newTarget))
-                    context.GetBagForChange(change).SetNew(FieldName, ValueSelector(newTarget));
+                    context.GetBagFor(change).SetNew(FieldName, ValueSelector(newTarget));
             }
         }
     }

@@ -27,7 +27,7 @@ public class AuditDomainEnrichmentConfigTests
         var enricherRegistry = new AuditEntityEnricherRegistry([]);
         var enricher = new AuditEnrichmentFacade(
             new AuditEnrichmentPlanResolver(
-                new StaticAuditDomainEnrichmentPlanProvider(),
+                new StaticDomainEnrichmentPlanProvider(),
                 enricherRegistry),
             enricherRegistry);
 

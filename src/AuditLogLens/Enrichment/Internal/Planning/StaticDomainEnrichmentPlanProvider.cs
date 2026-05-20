@@ -3,24 +3,24 @@ using System.Reflection;
 
 namespace AuditLogLens.Enrichment.Internal.Planning;
 
-internal sealed class StaticAuditDomainEnrichmentPlanProvider : IAuditDomainEnrichmentPlanProvider
+internal sealed class StaticDomainEnrichmentPlanProvider : IDomainEnrichmentPlanProvider
 {
     private static readonly MethodInfo BuildPlanGenericMethod =
-        typeof(StaticAuditDomainEnrichmentPlanProvider)
+        typeof(StaticDomainEnrichmentPlanProvider)
             .GetMethod(nameof(BuildPlanGeneric), BindingFlags.NonPublic | BindingFlags.Static)
         ?? throw new InvalidOperationException(
             $"Method {nameof(BuildPlanGeneric)} was not found.");
 
-    private readonly ConcurrentDictionary<Type, AuditEnrichmentPlan> _cache = new();
+    private readonly ConcurrentDictionary<Type, AuditEnrichmentPlan> _planCacheByEntityType = new();
 
-    public AuditEnrichmentPlan GetPlan(Type entityType)
+    public AuditEnrichmentPlan GetPlanFor(Type entityType)
     {
         ArgumentNullException.ThrowIfNull(entityType);
 
-        return _cache.GetOrAdd(entityType, BuildPlanForType);
+        return _planCacheByEntityType.GetOrAdd(entityType, BuildPlanFor);
     }
 
-    private AuditEnrichmentPlan BuildPlanForType(Type entityType)
+    private static AuditEnrichmentPlan BuildPlanFor(Type entityType)
     {
         var auditConfigInterface = entityType
             .GetInterfaces()

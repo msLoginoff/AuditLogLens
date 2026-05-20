@@ -58,7 +58,7 @@ public sealed class CollectionRule : EnrichmentRule
             return;
         }
 
-        var itemEntities = context.GetLoadedEntities(ItemEntityType, ItemKeyPropertyName);
+        var itemEntities = context.GetLoadedEntitiesOf(ItemEntityType, ItemKeyPropertyName);
         var itemsByKey = LoadedEntityLookup.OneByKey(itemEntities, GetItemKey);
         if (itemsByKey.Count == 0)
         {
@@ -79,7 +79,7 @@ public sealed class CollectionRule : EnrichmentRule
                 continue;
             }
 
-            var bag = context.GetBagForChange(group.Key.Change);
+            var bag = context.GetBagFor(group.Key.Change);
             if (group.Key.Side == CollectionSide.Old)
             {
                 bag.SetOld(FieldName, values);
@@ -124,7 +124,7 @@ public sealed class CollectionRule : EnrichmentRule
         AuditEnrichmentContext context,
         ParentChangeIndex parentChanges)
     {
-        foreach (var joinEntry in context.GetTrackedEntries(JoinEntityType))
+        foreach (var joinEntry in context.GetTrackedEntriesOf(JoinEntityType))
         {
             if (!TryGetParentChange(joinEntry, parentChanges, out var parentChange))
             {
@@ -170,7 +170,7 @@ public sealed class CollectionRule : EnrichmentRule
         foreach (var parentEntry in changes
                      .Select(change => change.EntityType)
                      .Distinct()
-                     .SelectMany(context.GetTrackedEntries))
+                     .SelectMany(context.GetTrackedEntriesOf))
         {
             if (!byEntityReference.TryGetValue(parentEntry.Entity, out var change))
             {

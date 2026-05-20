@@ -1,10 +1,11 @@
 using System.Linq.Expressions;
 using AuditLogLens.Enrichment.Internal.Planning;
+using AuditLogLens.Enrichment.Options;
 using AuditLogLens.Enrichment.Rules;
 
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Extensions;
 
-public static class AuditEnrichmentPlanBuilderLookupExtensions
+public static class LookupEnrichmentExtensions
 {
     /// <summary>
     /// Declares a preload-only batched lookup. The library collects keys from
@@ -48,7 +49,7 @@ public static class AuditEnrichmentPlanBuilderLookupExtensions
         ArgumentNullException.ThrowIfNull(targetProperty);
 
         return builder.Lookup<TTarget>(
-            AuditEnrichmentExpressionHelper.GetPropertyName(targetProperty),
+            ExpressionPathHelper.GetPropertyName(targetProperty),
             keysSelector,
             configure);
     }

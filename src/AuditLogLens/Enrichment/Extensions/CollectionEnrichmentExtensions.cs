@@ -3,9 +3,9 @@ using System.Reflection;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Enrichment.Rules;
 
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Extensions;
 
-public static class AuditEnrichmentPlanBuilderCollectionExtensions
+public static class CollectionEnrichmentExtensions
 {
     /// <summary>
     /// Adds enrichment for explicit many-to-many or one-to-many collection changes represented by a join entity.
@@ -33,11 +33,11 @@ public static class AuditEnrichmentPlanBuilderCollectionExtensions
             JoinEntityType = typeof(TJoin),
             ItemEntityType = typeof(TItem),
             ParentKeyPropertyName = GetDefaultKeyPropertyName<TSource>(),
-            JoinParentKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(joinParentKey),
-            JoinItemKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(joinItemKey),
+            JoinParentKeyPropertyName = ExpressionPathHelper.GetPropertyName(joinParentKey),
+            JoinItemKeyPropertyName = ExpressionPathHelper.GetPropertyName(joinItemKey),
             ItemKeyPropertyName = GetDefaultKeyPropertyName<TItem>(),
             FieldName = fieldName,
-            ItemValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(itemValueSelector)
+            ItemValueSelector = ExpressionPathHelper.CompileBoxedSelector(itemValueSelector)
         });
     }
 
@@ -66,12 +66,12 @@ public static class AuditEnrichmentPlanBuilderCollectionExtensions
             ParentEntityType = typeof(TSource),
             JoinEntityType = typeof(TJoin),
             ItemEntityType = typeof(TItem),
-            ParentKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(parentKey),
-            JoinParentKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(joinParentKey),
-            JoinItemKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(joinItemKey),
-            ItemKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(itemKey),
+            ParentKeyPropertyName = ExpressionPathHelper.GetPropertyName(parentKey),
+            JoinParentKeyPropertyName = ExpressionPathHelper.GetPropertyName(joinParentKey),
+            JoinItemKeyPropertyName = ExpressionPathHelper.GetPropertyName(joinItemKey),
+            ItemKeyPropertyName = ExpressionPathHelper.GetPropertyName(itemKey),
             FieldName = fieldName,
-            ItemValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(itemValueSelector)
+            ItemValueSelector = ExpressionPathHelper.CompileBoxedSelector(itemValueSelector)
         });
     }
 

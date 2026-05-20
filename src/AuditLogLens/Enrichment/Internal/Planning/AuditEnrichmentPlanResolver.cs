@@ -6,30 +6,30 @@ namespace AuditLogLens.Enrichment.Internal.Planning;
 
 internal sealed class AuditEnrichmentPlanResolver
 {
-    private readonly IAuditDomainEnrichmentPlanProvider _domainPlanProvider;
+    private readonly IDomainEnrichmentPlanProvider _domainPlanProvider;
     private readonly AuditEntityEnricherRegistry _enricherRegistry;
-    private readonly Dictionary<Type, AuditEnrichmentPlan> _plansByEntityType = new();
-    private readonly Dictionary<IModel, IReadOnlyList<CollectionRule>> _collectionRulesByModel = new();
+    private readonly Dictionary<Type, AuditEnrichmentPlan> _planCacheByEntityType = new();
+    private readonly Dictionary<IModel, IReadOnlyList<CollectionRule>> _collectionRulesCacheByEfModel = new();
 
     public AuditEnrichmentPlanResolver(
-        IAuditDomainEnrichmentPlanProvider domainPlanProvider,
+        IDomainEnrichmentPlanProvider domainPlanProvider,
         AuditEntityEnricherRegistry enricherRegistry)
     {
         _domainPlanProvider = domainPlanProvider;
         _enricherRegistry = enricherRegistry;
     }
 
-    public AuditEnrichmentPlan GetPlan(Type entityType)
+    public AuditEnrichmentPlan ResolvePlanFor(Type entityType)
     {
         ArgumentNullException.ThrowIfNull(entityType);
 
-        if (_plansByEntityType.TryGetValue(entityType, out var plan))
+        if (_planCacheByEntityType.TryGetValue(entityType, out var plan))
         {
             return plan;
         }
 
         var builder = new AuditEnrichmentPlanBuilder()
-            .Merge(_domainPlanProvider.GetPlan(entityType));
+            .Merge(_domainPlanProvider.GetPlanFor(entityType));
 
         foreach (var enricher in _enricherRegistry.GetEnrichersFor(entityType))
         {
@@ -37,16 +37,16 @@ internal sealed class AuditEnrichmentPlanResolver
         }
 
         plan = builder.Build();
-        _plansByEntityType[entityType] = plan;
+        _planCacheByEntityType[entityType] = plan;
 
         return plan;
     }
 
-    public IReadOnlyList<CollectionRule> GetCollectionRules(DbContext dbContext)
+    public IReadOnlyList<CollectionRule> ResolveCollectionRules(DbContext dbContext)
     {
         ArgumentNullException.ThrowIfNull(dbContext);
 
-        if (_collectionRulesByModel.TryGetValue(dbContext.Model, out var rules))
+        if (_collectionRulesCacheByEfModel.TryGetValue(dbContext.Model, out var rules))
         {
             return rules;
         }
@@ -55,12 +55,12 @@ internal sealed class AuditEnrichmentPlanResolver
             .GetEntityTypes()
             .Select(entityType => entityType.ClrType)
             .Distinct()
-            .Select(GetPlan)
+            .Select(ResolvePlanFor)
             .SelectMany(plan => plan.Rules)
             .OfType<CollectionRule>()
             .ToList();
 
-        _collectionRulesByModel[dbContext.Model] = rules;
+        _collectionRulesCacheByEfModel[dbContext.Model] = rules;
 
         return rules;
     }

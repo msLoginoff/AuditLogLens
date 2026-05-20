@@ -23,7 +23,7 @@ public static class AuditExtensions
         this IServiceCollection services,
         Action<AuditOptions> configure)
     {
-        services.AddSingleton<IAuditDomainEnrichmentPlanProvider, StaticAuditDomainEnrichmentPlanProvider>();
+        services.AddSingleton<IDomainEnrichmentPlanProvider, StaticDomainEnrichmentPlanProvider>();
         services.AddScoped<AuditEntityEnricherRegistry>();
         services.AddScoped<AuditEnrichmentPlanResolver>();
         services.AddScoped<IAuditChangeDetector, EfAuditChangeDetector>();

@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using AuditLogLens.Enrichment.Internal.Planning;
 
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Options;
 
 public sealed class AuditReferenceOptions<TTarget>
 {
@@ -14,7 +14,7 @@ public sealed class AuditReferenceOptions<TTarget>
     {
         ArgumentNullException.ThrowIfNull(navigationPath);
 
-        _includePaths.Add(AuditEnrichmentExpressionHelper.GetPropertyPath(navigationPath));
+        _includePaths.Add(ExpressionPathHelper.GetPropertyPath(navigationPath));
         return this;
     }
 }

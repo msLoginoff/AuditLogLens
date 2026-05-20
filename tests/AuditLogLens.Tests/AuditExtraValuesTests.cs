@@ -40,7 +40,7 @@ public class AuditExtraValuesTests
                 .Options);
         var context = new AuditEnrichmentContext([change], db, []);
 
-        var bag = context.GetBagForChange(change);
+        var bag = context.GetBagFor(change);
         bag.SetOld("Name", "Old");
         bag.SetNew("Name", "New");
         bag.SetExtraValue("PatientId", 42);
@@ -66,7 +66,7 @@ public class AuditExtraValuesTests
                 .Options);
         var context = new AuditEnrichmentContext([change], db, []);
 
-        var bag = context.GetBagForChange(change);
+        var bag = context.GetBagFor(change);
         bag.SetOld("Raw", "Old");
         bag.SetNew("Raw", "New");
         bag.SetExtraValue("Raw", 42);

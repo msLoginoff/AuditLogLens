@@ -1,11 +1,12 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using AuditLogLens.Enrichment.Internal.Planning;
+using AuditLogLens.Enrichment.Options;
 using AuditLogLens.Enrichment.Rules;
 
-namespace AuditLogLens.Enrichment;
+namespace AuditLogLens.Enrichment.Extensions;
 
-public static class AuditEnrichmentPlanBuilderReferenceExtensions
+public static class ReferenceEnrichmentExtensions
 {
     public static IAuditEnrichmentPlanBuilder Reference<TSource, TTarget, TKey>(
         this IAuditEnrichmentPlanBuilder builder,
@@ -37,10 +38,10 @@ public static class AuditEnrichmentPlanBuilderReferenceExtensions
         return builder.AddRule(new ReferenceRule
         {
             TargetEntityType = typeof(TTarget),
-            ForeignKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(foreignKeyProperty),
+            ForeignKeyPropertyName = ExpressionPathHelper.GetPropertyName(foreignKeyProperty),
             TargetKeyPropertyName = GetDefaultTargetKeyPropertyName<TTarget>(),
             FieldName = fieldName,
-            ValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(valueSelector),
+            ValueSelector = ExpressionPathHelper.CompileBoxedSelector(valueSelector),
             IncludePaths = options.IncludePaths
         });
     }
@@ -79,10 +80,10 @@ public static class AuditEnrichmentPlanBuilderReferenceExtensions
         return builder.AddRule(new ReferenceRule
         {
             TargetEntityType = typeof(TTarget),
-            ForeignKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(foreignKeyProperty),
-            TargetKeyPropertyName = AuditEnrichmentExpressionHelper.GetPropertyName(targetKeyProperty),
+            ForeignKeyPropertyName = ExpressionPathHelper.GetPropertyName(foreignKeyProperty),
+            TargetKeyPropertyName = ExpressionPathHelper.GetPropertyName(targetKeyProperty),
             FieldName = fieldName,
-            ValueSelector = AuditEnrichmentExpressionHelper.BoxValueSelector(valueSelector),
+            ValueSelector = ExpressionPathHelper.CompileBoxedSelector(valueSelector),
             IncludePaths = options.IncludePaths
         });
     }

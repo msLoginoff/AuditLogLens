@@ -2,6 +2,7 @@ using System.Data.Common;
 using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Context;
+using AuditLogLens.Enrichment.Extensions;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Enrichment.Rules;
@@ -561,9 +562,9 @@ public class AuditEnrichmentFacadeTests
         Assert.Contains("requires parent key", exception.Message);
     }
 
-    private sealed class TestDomainEnrichmentPlanProvider : IAuditDomainEnrichmentPlanProvider
+    private sealed class TestDomainEnrichmentPlanProvider : IDomainEnrichmentPlanProvider
     {
-        public AuditEnrichmentPlan GetPlan(Type entityType)
+        public AuditEnrichmentPlan GetPlanFor(Type entityType)
         {
             if (entityType == typeof(FirstSourceEntity))
             {
@@ -686,7 +687,7 @@ public class AuditEnrichmentFacadeTests
         Assert.Equal(expected, values);
     }
 
-    private sealed class StaticPlanProvider : IAuditDomainEnrichmentPlanProvider
+    private sealed class StaticPlanProvider : IDomainEnrichmentPlanProvider
     {
         private readonly AuditEnrichmentPlan _plan;
 
@@ -695,7 +696,7 @@ public class AuditEnrichmentFacadeTests
             _plan = plan;
         }
 
-        public AuditEnrichmentPlan GetPlan(Type entityType)
+        public AuditEnrichmentPlan GetPlanFor(Type entityType)
         {
             return entityType == typeof(FirstSourceEntity)
                 ? _plan
@@ -740,8 +741,8 @@ public class AuditEnrichmentFacadeTests
             AuditEnrichmentContext context,
             CancellationToken cancellationToken = default)
         {
-            var change = Assert.Single(context.GetChangesOfType(typeof(FirstSourceEntity)));
-            context.GetBagForChange(change).SetNew("First", "first");
+            var change = Assert.Single(context.GetChangesOf(typeof(FirstSourceEntity)));
+            context.GetBagFor(change).SetNew("First", "first");
 
             return Task.CompletedTask;
         }
@@ -755,8 +756,8 @@ public class AuditEnrichmentFacadeTests
             AuditEnrichmentContext context,
             CancellationToken cancellationToken = default)
         {
-            var change = Assert.Single(context.GetChangesOfType(typeof(FirstSourceEntity)));
-            var bag = context.GetBagForChange(change);
+            var change = Assert.Single(context.GetChangesOf(typeof(FirstSourceEntity)));
+            var bag = context.GetBagFor(change);
 
             Assert.True(bag.TryGetNewValue("First", out var firstValue));
             Assert.Equal("first", firstValue);
@@ -776,8 +777,8 @@ public class AuditEnrichmentFacadeTests
             AuditEnrichmentContext context,
             CancellationToken cancellationToken = default)
         {
-            var change = Assert.Single(context.GetChangesOfType(typeof(FirstSourceEntity)));
-            var bag = context.GetBagForChange(change);
+            var change = Assert.Single(context.GetChangesOf(typeof(FirstSourceEntity)));
+            var bag = context.GetBagFor(change);
 
             Assert.False(bag.HasAnyValues());
             Assert.Equal("first", change.NewValues["First"]);
@@ -809,7 +810,7 @@ public class AuditEnrichmentFacadeTests
             CancellationToken cancellationToken = default)
         {
             Assert.Equal("before", change.NewValues["PerChangeBefore"]);
-            Assert.False(context.GetBagForChange(change).HasAnyValues());
+            Assert.False(context.GetBagFor(change).HasAnyValues());
 
             change.NewValues["PerChangeAfter"] = "after";
             return Task.CompletedTask;

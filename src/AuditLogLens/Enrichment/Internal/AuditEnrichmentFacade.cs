@@ -36,10 +36,10 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
         var entityTypes = context.EntityTypes;
         var plansByEntityType = context.EntityTypes.ToDictionary(
             entityType => entityType,
-            _planResolver.GetPlan);
+            _planResolver.ResolvePlanFor);
 
         var loadRequests = CollectLoadRequests(plansByEntityType, context);
-        await EnrichmentDataLoader.LoadAsync(loadRequests, context, cancellationToken)
+        await EntityLoadRequestExecutor.ExecuteAsync(loadRequests, context, cancellationToken)
             .ConfigureAwait(false);
 
         // Rules are applied only after all reference data has been globally preloaded
@@ -68,7 +68,7 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
 
         foreach (var (entityType, plan) in plansByEntityType)
         {
-            var changes = context.GetChangesOfType(entityType);
+            var changes = context.GetChangesOf(entityType);
             if (changes.Count == 0)
                 continue;
 
@@ -86,7 +86,7 @@ internal sealed class AuditEnrichmentFacade : IAuditEnricher
         AuditEnrichmentPlan plan,
         AuditEnrichmentContext context)
     {
-        var changes = context.GetChangesOfType(entityType);
+        var changes = context.GetChangesOf(entityType);
         if (changes.Count == 0)
             return;
 

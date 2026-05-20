@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace AuditLogLens.Enrichment.Internal.Planning;
 
-internal static class AuditEnrichmentExpressionHelper
+internal static class ExpressionPathHelper
 {
     public static string GetPropertyName<TEntity, TProperty>(
         Expression<Func<TEntity, TProperty>> expression)
@@ -52,7 +52,7 @@ internal static class AuditEnrichmentExpressionHelper
         return string.Join(".", members);
     }
 
-    public static Func<object, object?> BoxValueSelector<TEntity, TValue>(
+    public static Func<object, object?> CompileBoxedSelector<TEntity, TValue>(
         Expression<Func<TEntity, TValue>> expression)
     {
         ArgumentNullException.ThrowIfNull(expression);

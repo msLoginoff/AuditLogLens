@@ -34,7 +34,7 @@ public sealed class ReverseReferenceRule : EnrichmentRule
 
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
-        var loadedEntities = context.GetLoadedEntities(TargetEntityType, TargetForeignKeyPropertyName);
+        var loadedEntities = context.GetLoadedEntitiesOf(TargetEntityType, TargetForeignKeyPropertyName);
         var entitiesByForeignKey = LoadedEntityLookup.ManyByKey(loadedEntities, TargetForeignKeySelector);
 
         foreach (var change in changes)
@@ -46,7 +46,7 @@ public sealed class ReverseReferenceRule : EnrichmentRule
             if (!entitiesByForeignKey.TryGetValue(sourceKey, out var related))
                 continue;
 
-            Map(change, related, context.GetBagForChange(change));
+            Map(change, related, context.GetBagFor(change));
         }
     }
 }

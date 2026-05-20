@@ -8,17 +8,20 @@ using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace AuditLogLens.Enrichment.Internal.Loading;
 
-internal static class EnrichmentDataLoader
+internal static class EntityLoadRequestExecutor
 {
-    private static readonly MethodInfo _loadEntitiesGenericMethod =
-        typeof(EnrichmentDataLoader)
-            .GetMethod(nameof(LoadEntitiesGenericAsync), BindingFlags.NonPublic | BindingFlags.Static)
+    private static readonly MethodInfo _queryEntitiesGenericAsyncMethod =
+        typeof(EntityLoadRequestExecutor)
+            .GetMethod(nameof(QueryEntitiesByPropertyValuesGenericAsync), BindingFlags.NonPublic | BindingFlags.Static)
         ?? throw new InvalidOperationException(
-            $"Method {nameof(LoadEntitiesGenericAsync)} was not found.");
+            $"Method {nameof(QueryEntitiesByPropertyValuesGenericAsync)} was not found.");
 
-    private static readonly ConcurrentDictionary<(Type Entity, Type Key), MethodInfo> _closedMethodCache = new();
+    private static readonly ConcurrentDictionary<(Type Entity, Type Key), MethodInfo> _queryMethodCacheByType = new();
 
-    public static async Task LoadAsync(
+    private static readonly ConcurrentDictionary<(IModel Model, Type Entity, string Property), LoadTarget>
+        _loadTargetCache = new();
+
+    public static async Task ExecuteAsync(
         IReadOnlyCollection<EntityLoadRequest> loadRequests,
         AuditEnrichmentContext context,
         CancellationToken cancellationToken)
@@ -43,32 +46,32 @@ internal static class EnrichmentDataLoader
                 .Distinct()
                 .ToList();
 
-            var property = GetRequiredEfProperty(context.DbContext, entityType, propertyName);
-            var tracked = GetTrackedEntities(
-                context.GetTrackedEntries(entityType),
+            var target = GetRequiredLoadTarget(context.DbContext, entityType, propertyName);
+            var tracked = FindUsableTrackedEntities(
+                context.GetTrackedEntriesOf(entityType),
                 propertyName,
                 values,
                 includePaths,
                 out var trackedValues);
 
-            var missingValues = values
-                .Where(x => !trackedValues.Contains(x))
-                .ToList();
+            var valuesToLoad = target.CanTrackedEntitySatisfyValue
+                ? values.Where(x => !trackedValues.Contains(x)).ToList()
+                : values;
 
-            var loaded = missingValues.Count == 0
+            var loaded = valuesToLoad.Count == 0
                 ? []
-                : await LoadEntitiesByPropertyValuesAsync(
-                        context.DbContext, entityType, property, missingValues, includePaths, cancellationToken)
+                : await QueryEntitiesByPropertyValuesAsync(
+                        context.DbContext, entityType, target.Property, valuesToLoad, includePaths, cancellationToken)
                     .ConfigureAwait(false);
 
             context.SetLoadedEntities(
                 entityType,
                 propertyName,
-                Deduplicate(context.DbContext, entityType, tracked.Concat(loaded).ToList()));
+                DeduplicateByPrimaryKey(context.DbContext, entityType, tracked.Concat(loaded).ToList()));
         }
     }
 
-    private static Task<IReadOnlyList<object>> LoadEntitiesByPropertyValuesAsync(
+    private static Task<IReadOnlyList<object>> QueryEntitiesByPropertyValuesAsync(
         DbContext dbContext,
         Type entityType,
         IProperty property,
@@ -76,16 +79,27 @@ internal static class EnrichmentDataLoader
         IReadOnlyList<string> includePaths,
         CancellationToken cancellationToken)
     {
-        var method = _closedMethodCache.GetOrAdd(
+        var method = _queryMethodCacheByType.GetOrAdd(
             (entityType, property.ClrType),
-            static key => _loadEntitiesGenericMethod.MakeGenericMethod(key.Entity, key.Key));
+            static key => _queryEntitiesGenericAsyncMethod.MakeGenericMethod(key.Entity, key.Key));
 
-        return (Task<IReadOnlyList<object>>)(method.Invoke(null,
-                                                 [dbContext, property.Name, values, includePaths, cancellationToken])
-                                             ?? Task.FromResult<IReadOnlyList<object>>(Array.Empty<object>()));
+        var result = method.Invoke(
+            obj: null,
+            parameters:
+            [
+                dbContext,
+                property.Name,
+                values,
+                includePaths,
+                cancellationToken
+            ]);
+
+        return result as Task<IReadOnlyList<object>>
+               ?? throw new InvalidOperationException(
+                   $"Method {method.Name} returned an unexpected result.");
     }
 
-    private static async Task<IReadOnlyList<object>> LoadEntitiesGenericAsync<TEntity, TProperty>(
+    private static async Task<IReadOnlyList<object>> QueryEntitiesByPropertyValuesGenericAsync<TEntity, TProperty>(
         DbContext dbContext,
         string propertyName,
         IReadOnlyList<object> rawValues,
@@ -114,21 +128,48 @@ internal static class EnrichmentDataLoader
             .ConfigureAwait(false);
     }
 
-    private static IProperty GetRequiredEfProperty(
+    private static LoadTarget GetRequiredLoadTarget(
         DbContext dbContext,
         Type entityType,
         string propertyName)
     {
-        var efEntityType = dbContext.Model.FindEntityType(entityType)
+        return _loadTargetCache.GetOrAdd(
+            (dbContext.Model, entityType, propertyName),
+            static key => BuildRequiredLoadTarget(key.Model, key.Entity, key.Property));
+    }
+
+    private static LoadTarget BuildRequiredLoadTarget(
+        IModel model,
+        Type entityType,
+        string propertyName)
+    {
+        var efEntityType = model.FindEntityType(entityType)
                            ?? throw new InvalidOperationException(
                                $"Entity type {entityType.FullName} is not part of the current DbContext model.");
 
-        return efEntityType.FindProperty(propertyName)
-               ?? throw new InvalidOperationException(
-                   $"Property '{propertyName}' was not found on entity type {entityType.FullName}.");
+        var property = efEntityType.FindProperty(propertyName)
+                       ?? throw new InvalidOperationException(
+                           $"Property '{propertyName}' was not found on entity type {entityType.FullName}.");
+
+        return new LoadTarget(
+            property,
+            IsSingleValueUnique(efEntityType, property));
     }
 
-    private static IReadOnlyList<object> GetTrackedEntities(
+    private static bool IsSingleValueUnique(
+        IEntityType entityType,
+        IProperty property)
+    {
+        return entityType.GetKeys().Any(key =>
+                   key.Properties.Count == 1
+                   && key.Properties[0] == property)
+               || entityType.GetIndexes().Any(index =>
+                   index.IsUnique
+                   && index.Properties.Count == 1
+                   && index.Properties[0] == property);
+    }
+
+    private static IReadOnlyList<object> FindUsableTrackedEntities(
         IReadOnlyList<AuditTrackedEntry> trackedEntries,
         string propertyName,
         IReadOnlyCollection<object> values,
@@ -145,7 +186,7 @@ internal static class EnrichmentDataLoader
 
         foreach (var entry in trackedEntries)
         {
-            if (!HasLoadedIncludes(entry.Entry, includePaths))
+            if (!HasAllRequestedIncludesLoaded(entry.Entry, includePaths))
             {
                 continue;
             }
@@ -166,7 +207,7 @@ internal static class EnrichmentDataLoader
         return result;
     }
 
-    private static bool HasLoadedIncludes(
+    private static bool HasAllRequestedIncludesLoaded(
         EntityEntry entry,
         IReadOnlyCollection<string> includePaths)
     {
@@ -193,7 +234,7 @@ internal static class EnrichmentDataLoader
         return true;
     }
 
-    private static IReadOnlyList<object> Deduplicate(
+    private static IReadOnlyList<object> DeduplicateByPrimaryKey(
         DbContext dbContext,
         Type entityType,
         IReadOnlyList<object> entities)
@@ -221,6 +262,10 @@ internal static class EnrichmentDataLoader
 
         return result;
     }
+
+    private sealed record LoadTarget(
+        IProperty Property,
+        bool CanTrackedEntitySatisfyValue);
 
     private sealed class EntityKey : IEquatable<EntityKey>
     {

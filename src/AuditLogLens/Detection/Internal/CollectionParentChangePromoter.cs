@@ -22,7 +22,7 @@ internal sealed class CollectionParentChangePromoter
         ArgumentNullException.ThrowIfNull(saveContext);
         ArgumentNullException.ThrowIfNull(shouldPromoteRule);
 
-        foreach (var rule in _planResolver.GetCollectionRules(dbContext))
+        foreach (var rule in _planResolver.ResolveCollectionRules(dbContext))
         {
             if (!shouldPromoteRule(rule))
             {

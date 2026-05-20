@@ -17,6 +17,6 @@ public sealed class OverrideFieldRule : EnrichmentRule
     internal override void Apply(IReadOnlyList<AuditChange> changes, AuditEnrichmentContext context)
     {
         foreach (var change in changes)
-            context.GetBagForChange(change).SetNew(FieldName, ValueFactory(change));
+            context.GetBagFor(change).SetNew(FieldName, ValueFactory(change));
     }
 }

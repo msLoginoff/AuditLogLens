@@ -23,7 +23,7 @@ public abstract class AuditEntityEnricherBase : IAuditEntityEnricher
             await BeforeMergeChangeAsync(
                     context,
                     change,
-                    context.GetBagForChange(change),
+                    context.GetBagFor(change),
                     cancellationToken)
                 .ConfigureAwait(false);
         }

@@ -16,7 +16,7 @@ public class EfAuditChangeDetectorTests
             new TestAuditRestrictions(),
             new CollectionParentChangePromoter(
                 new AuditEnrichmentPlanResolver(
-                    new StaticAuditDomainEnrichmentPlanProvider(),
+                    new StaticDomainEnrichmentPlanProvider(),
                     new AuditEntityEnricherRegistry([]))));
     }
 

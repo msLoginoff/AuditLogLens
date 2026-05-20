@@ -11,6 +11,12 @@ public sealed class AuditEnrichmentContext
     private readonly IReadOnlyList<AuditTrackedEntry> _trackedEntries;
     private readonly Dictionary<Type, IReadOnlyList<AuditTrackedEntry>> _trackedEntriesByEntityType = new();
 
+    public IReadOnlyList<AuditChange> Changes { get; }
+
+    public DbContext DbContext { get; }
+
+    internal IReadOnlyList<Type> EntityTypes => _changesByEntityType.Keys.ToList();
+
     internal AuditEnrichmentContext(
         IReadOnlyList<AuditChange> changes,
         DbContext dbContext,
@@ -33,13 +39,7 @@ public sealed class AuditEnrichmentContext
         }
     }
 
-    public IReadOnlyList<AuditChange> Changes { get; }
-
-    public DbContext DbContext { get; }
-
-    internal IReadOnlyList<Type> EntityTypes => _changesByEntityType.Keys.ToList();
-
-    public IReadOnlyList<AuditChange> GetChangesOfType(Type entityType)
+    public IReadOnlyList<AuditChange> GetChangesOf(Type entityType)
     {
         ArgumentNullException.ThrowIfNull(entityType);
         return _changesByEntityType.TryGetValue(entityType, out var changes)
@@ -47,7 +47,45 @@ public sealed class AuditEnrichmentContext
             : [];
     }
 
-    internal IReadOnlyList<AuditTrackedEntry> GetTrackedEntries(Type entityType)
+    public AuditEnrichmentBag GetBagFor(AuditChange change)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        return _bags[change];
+    }
+
+    public IReadOnlyList<object> GetLoadedEntitiesOf(Type entityType, string propertyName)
+    {
+        ArgumentNullException.ThrowIfNull(entityType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
+
+        return _loadedEntities.TryGetValue((entityType, propertyName), out var entities)
+            ? entities
+            : Array.Empty<object>();
+    }
+
+    public IReadOnlyList<T> GetLoaded<T>(string propertyName) where T : class
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
+
+        var entities = GetLoadedEntitiesOf(typeof(T), propertyName);
+        if (entities.Count == 0)
+        {
+            return Array.Empty<T>();
+        }
+
+        var result = new List<T>(entities.Count);
+        foreach (var entity in entities)
+        {
+            if (entity is T typed)
+            {
+                result.Add(typed);
+            }
+        }
+
+        return result;
+    }
+
+    internal IReadOnlyList<AuditTrackedEntry> GetTrackedEntriesOf(Type entityType)
     {
         ArgumentNullException.ThrowIfNull(entityType);
 
@@ -64,12 +102,6 @@ public sealed class AuditEnrichmentContext
         return entries;
     }
 
-    public AuditEnrichmentBag GetBagForChange(AuditChange change)
-    {
-        ArgumentNullException.ThrowIfNull(change);
-        return _bags[change];
-    }
-
     internal void SetLoadedEntities(
         Type entityType,
         string propertyName,
@@ -80,38 +112,6 @@ public sealed class AuditEnrichmentContext
         ArgumentNullException.ThrowIfNull(entities);
 
         _loadedEntities[(entityType, propertyName)] = entities.ToList();
-    }
-
-    public IReadOnlyList<object> GetLoadedEntities(Type entityType, string propertyName)
-    {
-        ArgumentNullException.ThrowIfNull(entityType);
-        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
-
-        return _loadedEntities.TryGetValue((entityType, propertyName), out var entities)
-            ? entities
-            : Array.Empty<object>();
-    }
-
-    public IReadOnlyList<T> GetLoaded<T>(string propertyName) where T : class
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
-
-        var entities = GetLoadedEntities(typeof(T), propertyName);
-        if (entities.Count == 0)
-        {
-            return Array.Empty<T>();
-        }
-
-        var result = new List<T>(entities.Count);
-        foreach (var entity in entities)
-        {
-            if (entity is T typed)
-            {
-                result.Add(typed);
-            }
-        }
-
-        return result;
     }
 
     internal void MergeBagsToChanges()

@@ -1,4 +1,5 @@
 using AuditLogLens.Enrichment;
+using AuditLogLens.Enrichment.Extensions;
 
 namespace AuditLogLens.Tests.TestObjects;
 
