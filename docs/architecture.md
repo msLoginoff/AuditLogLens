@@ -30,6 +30,9 @@ It creates `AuditChange` objects with:
 
 For added entities with generated keys, the real key is filled after the main save.
 
+In the current public API, EF Core detection is the only built-in source of `AuditChange`.
+Manual/event audit triggers are a planned extension point, but they are not exposed yet.
+
 ## Enrich
 
 The enrichment stage makes audit changes readable.
@@ -107,6 +110,8 @@ The public API is intentionally centered on the types users write directly:
 - `AuditEnrichmentBag`
 
 Runtime pipeline types are internal.
+
+This means application code should not call the enrichment facade or writer directly. If manual audit sources are added later, they should go through a deliberate public pipeline API rather than depending on internal runtime classes.
 
 ## Related Pages
 

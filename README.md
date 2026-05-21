@@ -10,6 +10,8 @@ The main idea is simple:
 EF Core changes -> AuditChange -> enrichment -> mapper -> audit table
 ```
 
+The current public pipeline starts from EF Core `SaveChanges`. Manual/event audit sources are not exposed as a public API yet.
+
 ## Quick Start
 
 ### 1. Register AuditLogLens
@@ -146,6 +148,8 @@ DoctorName = "Dr. Smith"
 
 AuditLogLens batches enrichment loads across all changes first. This helps avoid the common N+1 shape when many audit records need the same related data.
 
+For complex enrichers, use `Lookup(...)` in `Configure(...)` to preload data in the same batch pipeline, then read it from `context.GetLoaded<T>(...)` inside a hook. This is useful for JSON/custom values where a simple `Reference(...)` is not enough.
+
 Application-level enrichers can also add metadata or reshape values through `AuditEntityEnricherBase`. It uses template-method hooks around the single bag merge:
 
 ```text
@@ -197,6 +201,10 @@ The current version has:
 - Optional transactional audit writing.
 
 Current version: source-based working version for EF Core audit logging with enrichment, restrictions, custom mapping, EF writing, and optional transactional writes.
+
+Not supported yet:
+
+- Public manual/event audit source API. Today the built-in pipeline is designed around EF Core detection. A future version may allow an application trigger to create `AuditChange` objects and send them through the same enrichment and writing pipeline.
 
 ## License
 

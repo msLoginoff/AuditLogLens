@@ -61,6 +61,61 @@ builder.Reference<Visit, Doctor, int>(
 
 Includes are merged per target entity and key group. If several rules need the same `Doctor`, AuditLogLens still loads it in one batch.
 
+## Lookup Enrichment
+
+Use lookup enrichment when you want AuditLogLens to batch-load data, but you want to decide yourself how to apply that data in an enricher hook.
+
+This is useful for complex payloads, JSON fields, or cases where one loaded entity can affect several audit fields.
+
+```csharp
+using AuditLogLens;
+using AuditLogLens.Enrichment;
+using AuditLogLens.Enrichment.Context;
+using AuditLogLens.Enrichment.Extensions;
+
+public sealed class CustomValuesEnricher : AuditEntityEnricherBase
+{
+    public override bool CanHandle(Type entityType) => entityType == typeof(Patient);
+
+    public override void Configure(IAuditEnrichmentPlanBuilder builder)
+    {
+        builder.Lookup<Doctor, int>(
+            doctor => doctor.Id,
+            change => CollectDoctorIds(change),
+            options => options.Include(doctor => doctor.Clinic));
+    }
+
+    protected override Task BeforeMergeChangeAsync(
+        AuditEnrichmentContext context,
+        AuditChange change,
+        AuditEnrichmentBag bag,
+        CancellationToken cancellationToken = default)
+    {
+        var doctorsById = context
+            .GetLoaded<Doctor>(nameof(Doctor.Id))
+            .ToDictionary(doctor => doctor.Id);
+
+        if (TryReadDoctorId(change, out var doctorId)
+            && doctorsById.TryGetValue(doctorId, out var doctor))
+        {
+            bag.SetNew("Doctor", doctor.FullName);
+        }
+
+        return Task.CompletedTask;
+    }
+}
+```
+
+Lookup rules are preload-only:
+
+- `Configure(...)` declares what to load.
+- `keysSelector` extracts keys from each `AuditChange`.
+- AuditLogLens batches the keys globally across all changes.
+- `context.GetLoaded<T>(propertyName)` reads the loaded entities inside hooks.
+- The lookup itself does not write to `OldValues`, `NewValues`, or `ExtraValues`.
+
+Prefer lookup enrichment over direct database queries inside hooks. It keeps complex enrichers inside the same batched loading pipeline as `Reference` and `Collection`.
+
 ## Collection Enrichment
 
 Use collection enrichment for explicit join entities, such as `PatientTag`, `VisitResource`, or `UserRole`.
@@ -99,6 +154,23 @@ Limitations in the current version:
 
 - EF Core implicit skip-navigation many-to-many relationships without a CLR join entity are not supported yet.
 - `itemValueSelector` should return a value with meaningful equality, such as `string`, `int`, a record, or an anonymous type. Collection values are de-duplicated with `Distinct()`.
+
+## Advanced Rules and Custom Steps
+
+Most application code should use the fluent helpers:
+
+- `Reference(...)`
+- `Collection(...)`
+- `Lookup(...)`
+
+For advanced cases, `IAuditEnrichmentPlanBuilder` also exposes:
+
+- `AddRule(...)` for low-level enrichment rules.
+- `AddCustomStep(...)` for custom plan logic that runs after rule data has been loaded and after rules are applied, but before application enricher hooks and before the official bag merge.
+
+Use these APIs sparingly. They are powerful, but they expose more of the pipeline and are easier to misuse than the fluent helpers.
+
+`ReverseReferenceRule` and `OverrideFieldRule` currently exist as low-level rules. They are useful when the fluent helpers do not model the scenario cleanly, but they do not yet have the same high-level documentation or ergonomic extension methods as `Reference`, `Collection`, and `Lookup`.
 
 ## Application Enrichers
 
@@ -158,7 +230,7 @@ protected override Task BeforeMergeAsync(
 
     foreach (var change in context.Changes)
     {
-        var bag = context.GetBagForChange(change);
+        var bag = context.GetBagFor(change);
         bag.SetExtraValue("DeletedByCurrentUser", deletedUserIds.Contains(GetCurrentUserId()));
     }
 

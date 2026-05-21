@@ -130,6 +130,43 @@ public sealed class Visit : IHasAuditEnrichmentConfig<Visit>
 
 AuditLogLens batches reference loading across all changes before applying enrichment.
 
+## Batch Load Data for a Custom Enricher
+
+Use `Lookup(...)` when the enricher needs loaded data, but the mapping logic is too custom for a simple `Reference(...)`.
+
+```csharp
+using AuditLogLens;
+using AuditLogLens.Enrichment;
+using AuditLogLens.Enrichment.Context;
+using AuditLogLens.Enrichment.Extensions;
+
+public sealed class CustomValuesEnricher : AuditEntityEnricherBase
+{
+    public override bool CanHandle(Type entityType) => entityType == typeof(Patient);
+
+    public override void Configure(IAuditEnrichmentPlanBuilder builder)
+    {
+        builder.Lookup<Doctor, int>(
+            doctor => doctor.Id,
+            change => GetDoctorIdsFromValues(change));
+    }
+
+    protected override Task BeforeMergeChangeAsync(
+        AuditEnrichmentContext context,
+        AuditChange change,
+        AuditEnrichmentBag bag,
+        CancellationToken cancellationToken)
+    {
+        var doctors = context.GetLoaded<Doctor>(nameof(Doctor.Id));
+
+        // Use the loaded doctors to build one or more readable audit fields.
+        return Task.CompletedTask;
+    }
+}
+```
+
+`Lookup(...)` is preload-only. It loads entities into `AuditEnrichmentContext`; your hook decides what to write into the bag.
+
 ## Add Request or User Metadata
 
 Use an application enricher when data does not belong to one domain entity:
