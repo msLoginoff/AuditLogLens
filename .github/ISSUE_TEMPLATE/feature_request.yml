@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a new AuditLogLens capability or API change.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What audit scenario is hard or impossible today?
+      placeholder: "I need to audit..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the API or behavior you would expect.
+      placeholder: "It would help if AuditLogLens..."
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Detection
+        - Restrictions
+        - Enrichment
+        - Collection auditing
+        - Writing
+        - Transactions
+        - Manual/event audit
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention workarounds or other approaches you tried.
+    validations:
+      required: false

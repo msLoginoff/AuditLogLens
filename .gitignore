@@ -6,6 +6,11 @@
 # dotenv files
 .env
 
+# Local workspace files
+.DS_Store
+.idea/
+AI_CONTEXT.md
+
 # User-specific files
 *.rsuser
 *.suo

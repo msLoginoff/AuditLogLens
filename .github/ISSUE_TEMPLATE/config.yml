@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: NuGet package
+    url: https://www.nuget.org/packages/AuditLogLens
+    about: View published package versions and metadata.
+  - name: Documentation
+    url: https://github.com/msLoginoff/AuditLogLens/tree/master/docs
+    about: Read setup guides and recipes.

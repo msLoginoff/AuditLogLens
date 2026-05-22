@@ -1,0 +1,61 @@
+name: Bug report
+description: Report incorrect audit behavior, exceptions, or regressions.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Include a small reproduction when possible.
+  - type: input
+    id: version
+    attributes:
+      label: AuditLogLens version
+      placeholder: "0.1.0-alpha.1"
+    validations:
+      required: true
+  - type: input
+    id: dotnet
+    attributes:
+      label: .NET and EF Core version
+      placeholder: ".NET 10.0, EF Core 10.0.1"
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Scenario
+      description: Describe the entity change, restrictions, enrichment rules, and writer setup involved.
+      placeholder: "When saving..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: "AuditLogLens should write..."
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: "AuditLogLens writes..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Add code snippets, a small repository link, or a focused test case.
+      render: csharp
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Exception or logs
+      render: text
+    validations:
+      required: false

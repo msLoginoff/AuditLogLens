@@ -2,9 +2,10 @@
 
 [![CI](https://github.com/msLoginoff/AuditLogLens/actions/workflows/ci.yml/badge.svg)](https://github.com/msLoginoff/AuditLogLens/actions)
 [![NuGet](https://img.shields.io/nuget/v/AuditLogLens.svg)](https://www.nuget.org/packages/AuditLogLens)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/AuditLogLens.svg)](https://www.nuget.org/packages/AuditLogLens)
 [![License](https://img.shields.io/github/license/msLoginoff/AuditLogLens.svg)](https://github.com/msLoginoff/AuditLogLens/blob/master/LICENSE)
 
-AuditLogLens is an EF Core audit pipeline for readable audit logs.
+AuditLogLens is an EF Core audit log library for applications that need explicit audit rules and readable change records.
 
 It watches `SaveChanges`, creates `AuditChange` objects, enriches them with readable data, maps them to an audit entity, and writes audit records through EF Core.
 
@@ -15,6 +16,14 @@ EF Core changes -> AuditChange -> enrichment -> mapper -> audit table
 ```
 
 The current public pipeline starts from EF Core `SaveChanges`. Manual/event audit sources are not exposed as a public API yet.
+
+## Installation
+
+```bash
+dotnet add package AuditLogLens --version 0.1.0-alpha.1
+```
+
+`0.1.0-alpha.1` is the first public alpha. The API is usable, but still being shaped before a stable `1.0` release.
 
 ## Quick Start
 
@@ -191,9 +200,9 @@ Start here:
 
 ## Current Status
 
-AuditLogLens is usable as a source-based library and is being shaped into a cleaner reusable package.
+AuditLogLens is available as a public alpha NuGet package.
 
-The current version has:
+The current package has:
 
 - EF Core `SaveChangesInterceptor` integration.
 - Added, modified, and deleted entity detection.
@@ -204,12 +213,10 @@ The current version has:
 - Default EF writer with recursion suppression.
 - Optional transactional audit writing.
 
-Current version: source-based working version for EF Core audit logging with enrichment, restrictions, custom mapping, EF writing, and optional transactional writes.
-
 Not supported yet:
 
 - Public manual/event audit source API. Today the built-in pipeline is designed around EF Core detection. A future version may allow an application trigger to create `AuditChange` objects and send them through the same enrichment and writing pipeline.
 
 ## License
 
-Add license information before publishing as a public package.
+AuditLogLens is licensed under the [MIT License](LICENSE).

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore AuditLogLens.sln
+
+      - name: Build
+        run: dotnet build tests/AuditLogLens.Tests/AuditLogLens.Tests.csproj --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet tests/AuditLogLens.Tests/bin/Release/net10.0/AuditLogLens.Tests.dll
