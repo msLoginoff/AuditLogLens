@@ -181,6 +181,7 @@ Start here:
 
 - [Getting Started](docs/getting-started.md)
 - [Documentation Index](docs/README.md)
+- [Changelog](CHANGELOG.md)
 - [Recipes](docs/recipes.md)
 - [Enrichment](docs/enrichment.md)
 - [Restrictions](docs/restrictions.md)
@@ -197,6 +198,12 @@ Start here:
 - `AuditRestrictionsBase` controls which entities and properties are audited.
 - `IHasAuditEnrichmentConfig<TSelf>` adds declarative enrichment rules near the domain entity.
 - `AuditEntityEnricherBase` is the base class for application-level enrichment that does not belong to one domain entity.
+
+## Project
+
+- [Contributing](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## Current Status
 

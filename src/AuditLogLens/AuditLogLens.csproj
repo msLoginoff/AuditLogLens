@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
 
         <PackageId>AuditLogLens</PackageId>
-        <Version>0.1.0-alpha.1</Version>
+        <Version>0.1.0-alpha.2</Version>
         <Authors>Max Loginov</Authors>
         <Company>Max Loginov</Company>
         <Description>EF Core audit pipeline with declarative enrichment and batched readable lookup loading.</Description>
@@ -17,6 +17,10 @@
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <NoWarn>$(NoWarn);1591</NoWarn>
 
         <RootNamespace>AuditLogLens</RootNamespace>
@@ -25,6 +29,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.EntityFrameworkCore"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
     </ItemGroup>
 
     <ItemGroup>
