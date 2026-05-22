@@ -1,6 +1,6 @@
 # AuditLogLens
 
-[![CI](https://github.com/msLoginoff/AuditLogLens/actions/workflows/ci.yml/badge.svg)](https://github.com/msLoginoff/AuditLogLens/actions)
+[![CI](https://github.com/msLoginoff/AuditLogLens/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/msLoginoff/AuditLogLens/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/AuditLogLens.svg)](https://www.nuget.org/packages/AuditLogLens)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/AuditLogLens.svg)](https://www.nuget.org/packages/AuditLogLens)
 [![License](https://img.shields.io/github/license/msLoginoff/AuditLogLens.svg)](https://github.com/msLoginoff/AuditLogLens/blob/master/LICENSE)
