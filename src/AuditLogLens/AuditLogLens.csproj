@@ -4,13 +4,30 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+
         <PackageId>AuditLogLens</PackageId>
+        <Version>0.1.0-alpha.1</Version>
+        <Authors>Max Loginov</Authors>
+        <Company>Max Loginov</Company>
+        <Description>EF Core audit pipeline with declarative enrichment and batched readable lookup loading.</Description>
+        <PackageTags>audit;efcore;entity-framework-core;logging;enrichment;change-tracking</PackageTags>
+        <PackageProjectUrl>https://github.com/msLoginoff/AuditLogLens</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/msLoginoff/AuditLogLens.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
         <RootNamespace>AuditLogLens</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.EntityFrameworkCore"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="../../README.md" Pack="true" PackagePath="/"/>
     </ItemGroup>
 
 </Project>
