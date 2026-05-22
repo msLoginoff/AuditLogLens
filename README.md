@@ -1,5 +1,9 @@
 # AuditLogLens
 
+[![CI](https://github.com/msLoginoff/AuditLogLens/actions/workflows/ci.yml/badge.svg)](https://github.com/msLoginoff/AuditLogLens/actions)
+[![NuGet](https://img.shields.io/nuget/v/AuditLogLens.svg)](https://www.nuget.org/packages/AuditLogLens)
+[![License](https://img.shields.io/github/license/msLoginoff/AuditLogLens.svg)](https://github.com/msLoginoff/AuditLogLens/blob/master/LICENSE)
+
 AuditLogLens is an EF Core audit pipeline for readable audit logs.
 
 It watches `SaveChanges`, creates `AuditChange` objects, enriches them with readable data, maps them to an audit entity, and writes audit records through EF Core.
