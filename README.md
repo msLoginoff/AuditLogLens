@@ -5,8 +5,9 @@
 [![NuGet Downloads](https://img.shields.io/nuget/dt/AuditLogLens.svg)](https://www.nuget.org/packages/AuditLogLens)
 [![License](https://img.shields.io/github/license/msLoginoff/AuditLogLens.svg)](https://github.com/msLoginoff/AuditLogLens/blob/master/LICENSE)
 
-AuditLogLens is an EF Core audit log library for applications that need explicit audit rules and readable change records.
+AuditLogLens helps EF Core applications write audit logs that people can actually read.
 
+Raw ChangeTracker data is often full of ids, technical fields, and noisy changes. AuditLogLens captures those changes automatically, keeps auditing opt-in through explicit rules, and gives you a structured enrichment pipeline to turn raw values into meaningful audit records. It batches related data before enrichment runs, so readable logs do not require a pile of per-row lookup queries.
 It watches `SaveChanges`, creates `AuditChange` objects, enriches them with readable data, maps them to an audit entity, and writes audit records through EF Core.
 
 The main idea is simple:
