@@ -24,11 +24,18 @@ public interface IAuditChangeFactory
     /// <param name="newValues">Values to place in <see cref="AuditChange.NewValues"/>.</param>
     /// <param name="oldValues">Values to place in <see cref="AuditChange.OldValues"/>.</param>
     /// <param name="source">
-    /// Optional source object for enrichment rules that need typed source data.
+    /// Optional original object behind the manual audit event. The factory stores it
+    /// in <see cref="AuditChange.Entity"/> and, unless <paramref name="sourceType"/>
+    /// is provided, uses <c>source.GetType()</c> as <see cref="AuditChange.EntityType"/>.
+    /// Use this when enrichers need the actual object, not just the value dictionaries.
     /// </param>
     /// <param name="sourceType">
-    /// Optional source type to use when <paramref name="source"/> is null or when
-    /// the caller wants enrichment to resolve rules for a different type.
+    /// Optional type used only to select enrichment rules by setting
+    /// <see cref="AuditChange.EntityType"/>. This is useful when the manual event has
+    /// no source object, but should still use enrichment configured for a payload type.
+    /// When both <paramref name="source"/> and <paramref name="sourceType"/> are provided,
+    /// <paramref name="sourceType"/> wins for rule resolution while
+    /// <paramref name="source"/> remains available through <see cref="AuditChange.Entity"/>.
     /// </param>
     /// <param name="extraValues">
     /// Additional metadata values available to audit entry mappers and enrichers.

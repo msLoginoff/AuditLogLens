@@ -32,10 +32,9 @@ internal sealed class AuditPipeline : IAuditPipeline
             return;
         }
 
-        pipelineSettings ??= AuditPipelineSettings.Default;
-
         var changeList = changes as List<AuditChange> ?? changes.ToList();
-        var trackedEntries = pipelineSettings.TrackedEntries ?? Array.Empty<AuditTrackedEntry>();
+        var trackedEntries = pipelineSettings?.TrackedEntries ?? Array.Empty<AuditTrackedEntry>();
+        var saveBehavior = pipelineSettings?.SaveBehavior ?? AuditSaveBehavior.AddToCurrentContext;
 
         await _enricher.EnrichAsync(
                 changeList,
@@ -47,7 +46,7 @@ internal sealed class AuditPipeline : IAuditPipeline
         await _writer.WriteAsync(
                 changeList,
                 dbContext,
-                pipelineSettings.SaveBehavior,
+                saveBehavior,
                 cancellationToken)
             .ConfigureAwait(false);
     }

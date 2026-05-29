@@ -7,6 +7,7 @@ public sealed class AuditChange
 {
     private readonly Dictionary<string, object?> _syntheticKeyValues = new(StringComparer.Ordinal);
 
+    // EF changes use the EF entity CLR type; manual changes may use a DTO/payload source type.
     public required Type EntityType { get; init; }
 
     public object? EntityId { get; set; }
@@ -25,7 +26,7 @@ public sealed class AuditChange
 
     public EntityEntry? Entry { get; init; }
 
-    // Entry is null for synthetic changes, but Entity may still contain the source object.
+    // Entry is null for synthetic or manual changes, but Entity may still contain the source object.
     public object? Entity { get; init; }
 
     internal void SetSyntheticKeyValue(string key, object? value)

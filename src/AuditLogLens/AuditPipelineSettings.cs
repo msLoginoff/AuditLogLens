@@ -10,8 +10,6 @@ namespace AuditLogLens;
 /// </remarks>
 public sealed class AuditPipelineSettings
 {
-    internal static AuditPipelineSettings Default { get; } = new();
-
     /// <summary>
     /// Gets the save behavior for audit entries produced by this pipeline call.
     /// The default is <see cref="AuditSaveBehavior.AddToCurrentContext"/>.
