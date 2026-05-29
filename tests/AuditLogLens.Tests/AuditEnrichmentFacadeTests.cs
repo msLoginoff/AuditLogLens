@@ -546,7 +546,7 @@ public class AuditEnrichmentFacadeTests
     }
 
     [Fact]
-    public async Task EnrichAsync_CollectionRuleRequiresParentEntryInsteadOfFallingBackToEntityId()
+    public async Task EnrichAsync_CollectionRuleCanUseEntityIdWhenParentEntryIsUnavailable()
     {
         await using var db = CreateDbContext();
 
@@ -557,9 +557,9 @@ public class AuditEnrichmentFacadeTests
             State = AuditChangeState.Modified
         };
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => EnrichAsync(db, change, []));
+        await EnrichAsync(db, change, []);
 
-        Assert.Contains("requires parent key", exception.Message);
+        Assert.False(change.NewValues.ContainsKey("Tags"));
     }
 
     private sealed class TestDomainEnrichmentPlanProvider : IDomainEnrichmentPlanProvider

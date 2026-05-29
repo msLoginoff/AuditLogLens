@@ -100,8 +100,7 @@ public sealed class CollectionRule : EnrichmentRule
 
         foreach (var change in changes)
         {
-            var key = GetParentKey(change);
-            if (key is not null)
+            if (TryGetParentKey(change, out var key) && key is not null)
             {
                 byKey.TryAdd(key, change);
             }
@@ -243,20 +242,39 @@ public sealed class CollectionRule : EnrichmentRule
         };
     }
 
-    private object? GetParentKey(AuditChange change)
+    private bool TryGetParentKey(AuditChange change, out object? key)
     {
-        if (change.Entry?.Metadata.FindProperty(ParentKeyPropertyName) is not null)
+        if (change.Entry is not null)
         {
-            return change.Entry.Property(ParentKeyPropertyName).CurrentValue;
+            if (change.Entry.Metadata.FindProperty(ParentKeyPropertyName) is null)
+            {
+                throw new InvalidOperationException(
+                    $"Collection enrichment for {change.EntityType.FullName} requires parent key '{ParentKeyPropertyName}' from AuditChange.Entry or synthetic key values.");
+            }
+
+            key = change.Entry.Property(ParentKeyPropertyName).CurrentValue;
+            return true;
         }
 
-        if (change.TryGetSyntheticKeyValue(ParentKeyPropertyName, out var key))
+        if (change.TryGetSyntheticKeyValue(ParentKeyPropertyName, out var syntheticKey))
+        {
+            key = syntheticKey;
+            return true;
+        }
+
+        key = GetEntityIdKey(change.EntityId);
+        return key is not null;
+    }
+
+    private object? GetEntityIdKey(object? entityId)
+    {
+        if (entityId is IReadOnlyDictionary<string, object?> keyValues
+            && keyValues.TryGetValue(ParentKeyPropertyName, out var key))
         {
             return key;
         }
 
-        throw new InvalidOperationException(
-            $"Collection enrichment for {change.EntityType.FullName} requires parent key '{ParentKeyPropertyName}' from AuditChange.Entry or synthetic key values.");
+        return entityId;
     }
 
     private object? GetJoinParentKey(AuditTrackedEntry entry)
