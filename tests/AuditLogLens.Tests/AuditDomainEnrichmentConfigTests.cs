@@ -20,7 +20,7 @@ public class AuditDomainEnrichmentConfigTests
         var change = new AuditChange
         {
             EntityType = typeof(DomainConfiguredSourceEntity),
-            State = nameof(EntityState.Added)
+            State = AuditChangeState.Added
         };
         change.NewValues[nameof(DomainConfiguredSourceEntity.RelatedEntityId)] = 10;
 

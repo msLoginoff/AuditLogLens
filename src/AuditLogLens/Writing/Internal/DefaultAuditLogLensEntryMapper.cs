@@ -17,7 +17,7 @@ internal sealed class DefaultAuditLogLensEntryMapper : IAuditEntryMapper<AuditLo
             Id = Guid.NewGuid(),
             CreatedAtUtc = DateTime.UtcNow,
             TableName = change.TableName ?? change.EntityType.Name,
-            State = change.State,
+            State = change.State.ToString(),
             OldValuesJson = SerializeDictionaryOrNull(change.OldValues),
             NewValuesJson = SerializeDictionaryOrNull(change.NewValues)
         };

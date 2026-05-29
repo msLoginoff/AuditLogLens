@@ -55,7 +55,7 @@ public class EfAuditChangeDetectorTests
 
         Assert.Equal(nameof(AllowedEntity), change.TableName);
         Assert.Equal(nameof(AllowedEntity), change.EntityType.Name);
-        Assert.Equal(nameof(EntityState.Added), change.State);
+        Assert.Equal(AuditChangeState.Added, change.State);
 
         Assert.True(change.NewValues.ContainsKey(nameof(AllowedEntity.Name)));
         Assert.Equal("John", change.NewValues[nameof(AllowedEntity.Name)]);
@@ -89,7 +89,7 @@ public class EfAuditChangeDetectorTests
 
         var change = saveContext.PreSaveChanges[0];
 
-        Assert.Equal(nameof(EntityState.Modified), change.State);
+        Assert.Equal(AuditChangeState.Modified, change.State);
 
         Assert.True(change.OldValues.ContainsKey(nameof(AllowedEntity.Name)));
         Assert.True(change.NewValues.ContainsKey(nameof(AllowedEntity.Name)));
@@ -137,7 +137,7 @@ public class EfAuditChangeDetectorTests
 
         var change = Assert.Single(saveContext.PreSaveChanges);
 
-        Assert.Equal(nameof(EntityState.Modified), change.State);
+        Assert.Equal(AuditChangeState.Modified, change.State);
         Assert.Empty(change.OldValues);
         Assert.Empty(change.NewValues);
     }
@@ -162,7 +162,7 @@ public class EfAuditChangeDetectorTests
 
         var change = Assert.Single(saveContext.PreSaveChanges);
 
-        Assert.Equal(nameof(EntityState.Modified), change.State);
+        Assert.Equal(AuditChangeState.Modified, change.State);
         Assert.Empty(change.OldValues);
         Assert.Empty(change.NewValues);
     }
@@ -290,7 +290,7 @@ public class EfAuditChangeDetectorTests
 
         var change = saveContext.PreSaveChanges[0];
 
-        Assert.Equal(nameof(EntityState.Deleted), change.State);
+        Assert.Equal(AuditChangeState.Deleted, change.State);
 
         Assert.True(change.OldValues.ContainsKey(nameof(AllowedEntity.Name)));
         Assert.Equal("John", change.OldValues[nameof(AllowedEntity.Name)]);
@@ -411,7 +411,7 @@ public class EfAuditChangeDetectorTests
 
         var change = Assert.Single(saveContext.PreSaveChanges);
         Assert.Equal(typeof(PolymorphicVisitEvent), change.EntityType);
-        Assert.Equal(nameof(EntityState.Modified), change.State);
+        Assert.Equal(AuditChangeState.Modified, change.State);
         Assert.Equal(visit.Id, change.EntityId);
         Assert.Same(visit, change.Entity);
     }

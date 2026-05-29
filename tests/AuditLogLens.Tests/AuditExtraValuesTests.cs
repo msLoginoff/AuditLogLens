@@ -13,7 +13,7 @@ public class AuditExtraValuesTests
         var change = new AuditChange
         {
             EntityType = typeof(AllowedEntity),
-            State = nameof(EntityState.Modified)
+            State = AuditChangeState.Modified
         };
         change.SetExtraValue("PatientId", 42);
 
@@ -33,7 +33,7 @@ public class AuditExtraValuesTests
         var change = new AuditChange
         {
             EntityType = typeof(AllowedEntity),
-            State = nameof(EntityState.Modified)
+            State = AuditChangeState.Modified
         };
         using var db = new AuditTestDbContext(
             new DbContextOptionsBuilder<AuditTestDbContext>()
@@ -59,7 +59,7 @@ public class AuditExtraValuesTests
         var change = new AuditChange
         {
             EntityType = typeof(AllowedEntity),
-            State = nameof(EntityState.Modified)
+            State = AuditChangeState.Modified
         };
         using var db = new AuditTestDbContext(
             new DbContextOptionsBuilder<AuditTestDbContext>()

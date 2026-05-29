@@ -1,7 +1,7 @@
 namespace AuditLogLens;
 
 /// <summary>
-/// Describes the logical state of a manually supplied audit change.
+/// Describes the logical state of an audit change.
 /// </summary>
 public enum AuditChangeState
 {

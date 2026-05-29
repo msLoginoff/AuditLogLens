@@ -12,7 +12,7 @@ public sealed class AuditChange
 
     public object? EntityId { get; set; }
 
-    public required string State { get; init; }
+    public required AuditChangeState State { get; init; }
 
     public string? TableName { get; init; }
 

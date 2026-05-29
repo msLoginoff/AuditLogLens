@@ -1,7 +1,6 @@
 using AuditLogLens.Enrichment.Context;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Loading;
-using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Enrichment.Rules;
 
@@ -73,9 +72,9 @@ public sealed class ReferenceRule : EnrichmentRule
 
         return change.State switch
         {
-            nameof(EntityState.Added) => (null, ResolveNewForeignKey(hasNew, newFk, currentFk)),
-            nameof(EntityState.Deleted) => (hasOld ? oldFk : currentFk, null),
-            nameof(EntityState.Modified) => ResolveModified(hasOld, oldFk, hasNew, newFk, currentFk),
+            AuditChangeState.Added => (null, ResolveNewForeignKey(hasNew, newFk, currentFk)),
+            AuditChangeState.Deleted => (hasOld ? oldFk : currentFk, null),
+            AuditChangeState.Modified => ResolveModified(hasOld, oldFk, hasNew, newFk, currentFk),
             _ => (null, currentFk)
         };
     }

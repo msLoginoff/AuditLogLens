@@ -64,14 +64,14 @@ public class AuditEnrichmentFacadeTests
         var firstChange = new AuditChange
         {
             EntityType = typeof(FirstSourceEntity),
-            State = nameof(EntityState.Added)
+            State = AuditChangeState.Added
         };
         firstChange.NewValues[nameof(FirstSourceEntity.RelatedEntityId)] = 1;
 
         var secondChange = new AuditChange
         {
             EntityType = typeof(SecondSourceEntity),
-            State = nameof(EntityState.Added)
+            State = AuditChangeState.Added
         };
         secondChange.NewValues[nameof(SecondSourceEntity.RelatedEntityId)] = 2;
 
@@ -108,7 +108,7 @@ public class AuditEnrichmentFacadeTests
         var change = new AuditChange
         {
             EntityType = typeof(FirstSourceEntity),
-            State = nameof(EntityState.Modified),
+            State = AuditChangeState.Modified,
             Entry = db.Entry(source)
         };
         change.OldValues["Name"] = "Old";
@@ -149,7 +149,7 @@ public class AuditEnrichmentFacadeTests
         var change = new AuditChange
         {
             EntityType = typeof(FirstSourceEntity),
-            State = nameof(EntityState.Modified),
+            State = AuditChangeState.Modified,
             Entry = db.Entry(source)
         };
         change.OldValues[nameof(FirstSourceEntity.RelatedEntityId)] = 1;
@@ -187,7 +187,7 @@ public class AuditEnrichmentFacadeTests
         var change = new AuditChange
         {
             EntityType = typeof(FirstSourceEntity),
-            State = nameof(EntityState.Added)
+            State = AuditChangeState.Added
         };
         change.NewValues[nameof(FirstSourceEntity.RelatedEntityId)] = 1;
 
@@ -231,7 +231,7 @@ public class AuditEnrichmentFacadeTests
         var change = new AuditChange
         {
             EntityType = typeof(FirstSourceEntity),
-            State = nameof(EntityState.Added)
+            State = AuditChangeState.Added
         };
         change.NewValues[nameof(FirstSourceEntity.RelatedEntityId)] = 1;
 
@@ -270,7 +270,7 @@ public class AuditEnrichmentFacadeTests
         var change = new AuditChange
         {
             EntityType = typeof(FirstSourceEntity),
-            State = nameof(EntityState.Modified)
+            State = AuditChangeState.Modified
         };
 
         var enricher = new AuditEnrichmentFacade(
@@ -300,12 +300,12 @@ public class AuditEnrichmentFacadeTests
         var firstChange = new AuditChange
         {
             EntityType = typeof(FirstSourceEntity),
-            State = nameof(EntityState.Modified)
+            State = AuditChangeState.Modified
         };
         var secondChange = new AuditChange
         {
             EntityType = typeof(SecondSourceEntity),
-            State = nameof(EntityState.Modified)
+            State = AuditChangeState.Modified
         };
 
         var enricher = new AuditEnrichmentFacade(
@@ -356,7 +356,7 @@ public class AuditEnrichmentFacadeTests
         {
             EntityType = typeof(CollectionParentEntity),
             EntityId = parent.Id,
-            State = nameof(EntityState.Modified),
+            State = AuditChangeState.Modified,
             Entry = db.Entry(parent)
         };
         change.OldValues[nameof(CollectionParentEntity.Name)] = "Parent";
@@ -399,7 +399,7 @@ public class AuditEnrichmentFacadeTests
             new CollectionRefEntity { ParentId = 1, LookupId = 10 },
             new CollectionRefEntity { ParentId = 1, LookupId = 20 });
 
-        var change = CreateParentChange(parent, db.Entry(parent), EntityState.Added);
+        var change = CreateParentChange(parent, db.Entry(parent), AuditChangeState.Added);
         var trackedEntries = CaptureTrackedEntries(db);
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -421,7 +421,7 @@ public class AuditEnrichmentFacadeTests
         parent.References.Add(new CollectionRefEntity { LookupId = 10 });
         db.CollectionParentEntities.Add(parent);
 
-        var change = CreateParentChange(parent, db.Entry(parent), EntityState.Added);
+        var change = CreateParentChange(parent, db.Entry(parent), AuditChangeState.Added);
         var trackedEntries = CaptureTrackedEntries(db);
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -448,8 +448,8 @@ public class AuditEnrichmentFacadeTests
 
         db.CollectionParentEntities.AddRange(firstParent, secondParent);
 
-        var firstChange = CreateParentChange(firstParent, db.Entry(firstParent), EntityState.Added);
-        var secondChange = CreateParentChange(secondParent, db.Entry(secondParent), EntityState.Added);
+        var firstChange = CreateParentChange(firstParent, db.Entry(firstParent), AuditChangeState.Added);
+        var secondChange = CreateParentChange(secondParent, db.Entry(secondParent), AuditChangeState.Added);
         var trackedEntries = CaptureTrackedEntries(db);
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -478,7 +478,7 @@ public class AuditEnrichmentFacadeTests
         var parent = db.CollectionParentEntities.Single();
         db.CollectionParentEntities.Remove(parent);
 
-        var change = CreateParentChange(parent, db.Entry(parent), EntityState.Deleted);
+        var change = CreateParentChange(parent, db.Entry(parent), AuditChangeState.Deleted);
         var trackedEntries = CaptureTrackedEntries(db);
 
         await EnrichAsync(db, change, trackedEntries);
@@ -509,8 +509,8 @@ public class AuditEnrichmentFacadeTests
             new CollectionRefEntity { ParentId = 1, LookupId = 10 },
             new CollectionRefEntity { ParentId = 2, LookupId = 20 });
 
-        var firstChange = CreateParentChange(first, db.Entry(first), EntityState.Modified);
-        var secondChange = CreateParentChange(second, db.Entry(second), EntityState.Modified);
+        var firstChange = CreateParentChange(first, db.Entry(first), AuditChangeState.Modified);
+        var secondChange = CreateParentChange(second, db.Entry(second), AuditChangeState.Modified);
         var trackedEntries = CaptureTrackedEntries(db);
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -554,7 +554,7 @@ public class AuditEnrichmentFacadeTests
         {
             EntityType = typeof(CollectionParentEntity),
             EntityId = 1,
-            State = nameof(EntityState.Modified)
+            State = AuditChangeState.Modified
         };
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => EnrichAsync(db, change, []));
@@ -623,13 +623,13 @@ public class AuditEnrichmentFacadeTests
     private static AuditChange CreateParentChange(
         CollectionParentEntity parent,
         EntityEntry entry,
-        EntityState state)
+        AuditChangeState state)
     {
         return new AuditChange
         {
             EntityType = typeof(CollectionParentEntity),
             EntityId = parent.Id,
-            State = state.ToString(),
+            State = state,
             Entry = entry
         };
     }

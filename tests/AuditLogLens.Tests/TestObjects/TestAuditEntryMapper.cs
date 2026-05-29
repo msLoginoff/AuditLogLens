@@ -12,7 +12,7 @@ public sealed class TestAuditEntryMapper : IAuditEntryMapper<TestAuditEntry>
         {
             TableName = change.TableName,
             EntityId = change.EntityId?.ToString(),
-            State = change.State,
+            State = change.State.ToString(),
             NewName = change.NewValues.TryGetValue(nameof(AllowedEntity.Name), out var name)
                 ? name?.ToString()
                 : null,

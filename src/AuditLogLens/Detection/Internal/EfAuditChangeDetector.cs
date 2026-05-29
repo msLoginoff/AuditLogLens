@@ -109,7 +109,7 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
         EntityEntry entry,
         IReadOnlySet<string> temporaryPropertyNames)
     {
-        if (change.State != nameof(EntityState.Added))
+        if (change.State != AuditChangeState.Added)
         {
             return;
         }
@@ -155,7 +155,7 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
             Entity = entry.Entity,
             EntityType = entry.Metadata.ClrType,
             EntityId = TryGetPrimaryKeyValue(entry),
-            State = entry.State.ToString(),
+            State = ToAuditChangeState(entry.State),
             TableName = tableName,
             IsAfterSavePhase = isAfterSave
         };
@@ -223,7 +223,7 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
                 hasTemporaryKey = true;
             }
 
-            if (change.State == nameof(EntityState.Added)
+            if (change.State == AuditChangeState.Added
                 && change.NewValues.ContainsKey(property.Metadata.Name))
             {
                 auditedTemporaryPropertyNames.Add(property.Metadata.Name);
@@ -261,5 +261,16 @@ internal sealed class EfAuditChangeDetector : IAuditChangeDetector
     private static string? GetAuditTableName(EntityEntry entry)
     {
         return entry.Metadata.ClrType.Name;
+    }
+
+    private static AuditChangeState ToAuditChangeState(EntityState state)
+    {
+        return state switch
+        {
+            EntityState.Added => AuditChangeState.Added,
+            EntityState.Modified => AuditChangeState.Modified,
+            EntityState.Deleted => AuditChangeState.Deleted,
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
+        };
     }
 }

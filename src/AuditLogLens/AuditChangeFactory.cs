@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-
 namespace AuditLogLens;
 
 /// <summary>
@@ -25,7 +23,7 @@ public sealed class AuditChangeFactory : IAuditChangeFactory
             EntityType = sourceType ?? source?.GetType() ?? typeof(object),
             Entity = source,
             EntityId = rowKey,
-            State = ToEntityStateName(state),
+            State = state,
             TableName = tableName
         };
 
@@ -66,14 +64,4 @@ public sealed class AuditChangeFactory : IAuditChangeFactory
         }
     }
 
-    private static string ToEntityStateName(AuditChangeState state)
-    {
-        return state switch
-        {
-            AuditChangeState.Added => nameof(EntityState.Added),
-            AuditChangeState.Modified => nameof(EntityState.Modified),
-            AuditChangeState.Deleted => nameof(EntityState.Deleted),
-            _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
-        };
-    }
 }

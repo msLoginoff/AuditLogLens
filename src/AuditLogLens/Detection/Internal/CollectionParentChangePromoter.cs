@@ -170,7 +170,7 @@ internal sealed class CollectionParentChangePromoter
             EntityType = rule.ParentEntityType,
             EntityId = parentKey,
             Entity = parentEntity,
-            State = nameof(EntityState.Modified),
+            State = AuditChangeState.Modified,
             TableName = rule.ParentEntityType.Name,
             IsAfterSavePhase = false
         };

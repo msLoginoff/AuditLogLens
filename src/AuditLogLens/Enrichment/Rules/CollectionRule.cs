@@ -231,13 +231,13 @@ public sealed class CollectionRule : EnrichmentRule
     {
         return parentChange.State switch
         {
-            nameof(EntityState.Added) when joinState is EntityState.Added or EntityState.Unchanged
+            AuditChangeState.Added when joinState is EntityState.Added or EntityState.Unchanged
                 => CollectionSide.New,
-            nameof(EntityState.Deleted) when joinState is EntityState.Deleted or EntityState.Unchanged
+            AuditChangeState.Deleted when joinState is EntityState.Deleted or EntityState.Unchanged
                 => CollectionSide.Old,
-            nameof(EntityState.Modified) when joinState == EntityState.Added
+            AuditChangeState.Modified when joinState == EntityState.Added
                 => CollectionSide.New,
-            nameof(EntityState.Modified) when joinState == EntityState.Deleted
+            AuditChangeState.Modified when joinState == EntityState.Deleted
                 => CollectionSide.Old,
             _ => null
         };
