@@ -2,8 +2,6 @@ using System.Runtime.CompilerServices;
 using System.Transactions;
 using AuditLogLens.Detection;
 using AuditLogLens.Detection.Internal;
-using AuditLogLens.Enrichment.Internal;
-using AuditLogLens.Writing.Internal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
@@ -12,8 +10,7 @@ namespace AuditLogLens.Interceptors;
 internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
 {
     private readonly IAuditChangeDetector _changeDetector;
-    private readonly IAuditEnricher _enricher;
-    private readonly IAuditWriter _writer;
+    private readonly IAuditPipeline _pipeline;
     private readonly AuditSaveChangesSuppressor _suppressor;
     private readonly AuditOptions _options;
 
@@ -21,14 +18,12 @@ internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
 
     public AuditSaveChangesInterceptor(
         IAuditChangeDetector changeDetector,
-        IAuditEnricher enricher,
-        IAuditWriter writer,
+        IAuditPipeline pipeline,
         AuditSaveChangesSuppressor suppressor,
         AuditOptions options)
     {
         _changeDetector = changeDetector;
-        _enricher = enricher;
-        _writer = writer;
+        _pipeline = pipeline;
         _suppressor = suppressor;
         _options = options;
     }
@@ -106,14 +101,16 @@ internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         {
             var changes = _changeDetector.DetectPostSaveChanges(dbContext, saveContext);
 
-            _enricher.EnrichAsync(
-                    changes,
+            _pipeline.ProcessAsync(
                     dbContext,
-                    saveContext.TrackedEntries)
+                    changes,
+                    new AuditPipelineOptions
+                    {
+                        SaveBehavior = AuditSaveBehavior.SaveImmediately,
+                        TrackedEntries = saveContext.TrackedEntries
+                    })
                 .GetAwaiter()
                 .GetResult();
-
-            _writer.WriteAsync(changes, dbContext).GetAwaiter().GetResult();
 
             CommitOwnedTransaction(saveContext);
         }
@@ -155,14 +152,16 @@ internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         {
             var changes = _changeDetector.DetectPostSaveChanges(dbContext, saveContext);
 
-            await _enricher.EnrichAsync(
-                    changes,
+            await _pipeline.ProcessAsync(
                     dbContext,
-                    saveContext.TrackedEntries,
+                    changes,
+                    new AuditPipelineOptions
+                    {
+                        SaveBehavior = AuditSaveBehavior.SaveImmediately,
+                        TrackedEntries = saveContext.TrackedEntries
+                    },
                     cancellationToken)
                 .ConfigureAwait(false);
-
-            await _writer.WriteAsync(changes, dbContext, cancellationToken).ConfigureAwait(false);
 
             await CommitOwnedTransactionAsync(saveContext, cancellationToken).ConfigureAwait(false);
         }

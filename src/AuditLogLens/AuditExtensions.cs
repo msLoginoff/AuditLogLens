@@ -3,6 +3,7 @@ using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Interceptors;
+using AuditLogLens.Internal;
 using AuditLogLens.Restrictions;
 using AuditLogLens.Restrictions.Internal;
 using AuditLogLens.Writing.Internal;
@@ -29,6 +30,8 @@ public static class AuditExtensions
         services.AddScoped<IAuditChangeDetector, EfAuditChangeDetector>();
         services.AddScoped<CollectionParentChangePromoter>();
         services.AddScoped<IAuditEnricher, AuditEnrichmentFacade>();
+        services.TryAddScoped<IAuditPipeline, AuditPipeline>();
+        services.TryAddSingleton<IAuditChangeFactory, AuditChangeFactory>();
         services.TryAddSingleton<IAuditRestrictions, DefaultAuditRestrictions>();
         services.TryAddScoped<IAuditEntryMapper<AuditLogLensEntry>, DefaultAuditLogLensEntryMapper>();
         services.TryAddScoped<IAuditWriter, EfAuditWriter<AuditLogLensEntry>>();

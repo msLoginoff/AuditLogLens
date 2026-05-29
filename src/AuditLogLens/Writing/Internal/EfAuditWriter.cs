@@ -20,6 +20,7 @@ internal sealed class EfAuditWriter<TAuditEntry> : IAuditWriter
     public async Task WriteAsync(
         IReadOnlyList<AuditChange> changes,
         DbContext dbContext,
+        AuditSaveBehavior saveBehavior,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(changes);
@@ -56,9 +57,12 @@ internal sealed class EfAuditWriter<TAuditEntry> : IAuditWriter
 
         dbContext.Set<TAuditEntry>().AddRange(auditEntries);
 
-        using (_suppressor.Suppress())
+        if (saveBehavior == AuditSaveBehavior.SaveImmediately)
         {
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            using (_suppressor.Suppress())
+            {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 
