@@ -21,7 +21,7 @@ internal sealed class AuditPipeline : IAuditPipeline
     public async Task ProcessAsync(
         DbContext dbContext,
         IReadOnlyList<AuditChange> changes,
-        AuditPipelineOptions? options = null,
+        AuditPipelineSettings? pipelineSettings = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(dbContext);
@@ -32,10 +32,10 @@ internal sealed class AuditPipeline : IAuditPipeline
             return;
         }
 
-        options ??= AuditPipelineOptions.Default;
+        pipelineSettings ??= AuditPipelineSettings.Default;
 
         var changeList = changes as List<AuditChange> ?? changes.ToList();
-        var trackedEntries = options.TrackedEntries ?? Array.Empty<AuditTrackedEntry>();
+        var trackedEntries = pipelineSettings.TrackedEntries ?? Array.Empty<AuditTrackedEntry>();
 
         await _enricher.EnrichAsync(
                 changeList,
@@ -47,7 +47,7 @@ internal sealed class AuditPipeline : IAuditPipeline
         await _writer.WriteAsync(
                 changeList,
                 dbContext,
-                options.SaveBehavior,
+                pipelineSettings.SaveBehavior,
                 cancellationToken)
             .ConfigureAwait(false);
     }

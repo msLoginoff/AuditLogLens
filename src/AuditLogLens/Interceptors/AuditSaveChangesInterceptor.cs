@@ -104,7 +104,7 @@ internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
             _pipeline.ProcessAsync(
                     dbContext,
                     changes,
-                    new AuditPipelineOptions
+                    new AuditPipelineSettings
                     {
                         SaveBehavior = AuditSaveBehavior.SaveImmediately,
                         TrackedEntries = saveContext.TrackedEntries
@@ -155,7 +155,7 @@ internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
             await _pipeline.ProcessAsync(
                     dbContext,
                     changes,
-                    new AuditPipelineOptions
+                    new AuditPipelineSettings
                     {
                         SaveBehavior = AuditSaveBehavior.SaveImmediately,
                         TrackedEntries = saveContext.TrackedEntries
