@@ -7,6 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Enrichment.Rules;
 
+/// <summary>
+/// Enriches a parent audit change from tracked changes in an explicit collection join entity.
+/// </summary>
+/// <remarks>
+/// Collection rules depend on tracked join-entry snapshots captured by the EF interceptor.
+/// Manual audit changes can participate only when they can be matched to those snapshots,
+/// usually through <see cref="AuditChange.EntityId"/> or synthetic key values.
+/// </remarks>
 public sealed class CollectionRule : EnrichmentRule
 {
     public required Type ParentEntityType { get; init; }
@@ -263,6 +271,8 @@ public sealed class CollectionRule : EnrichmentRule
             return true;
         }
 
+        // Manual changes do not have an EntityEntry. Treat EntityId as the parent key
+        // so collection rules can fail closed instead of throwing on payload-only events.
         key = GetEntityIdKey(change.EntityId);
         return key is not null;
     }

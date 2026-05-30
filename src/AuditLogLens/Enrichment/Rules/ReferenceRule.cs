@@ -5,6 +5,15 @@ using AuditLogLens.Enrichment.Internal.Loading;
 
 namespace AuditLogLens.Enrichment.Rules;
 
+/// <summary>
+/// Enriches an audit change by replacing a foreign-key value with a readable value
+/// from the referenced entity.
+/// </summary>
+/// <remarks>
+/// Prefer the fluent <c>Reference</c> methods unless a custom rule object is needed.
+/// The rule reads foreign keys from <see cref="AuditChange.OldValues"/>,
+/// <see cref="AuditChange.NewValues"/>, or the EF entry when it is available.
+/// </remarks>
 public sealed class ReferenceRule : EnrichmentRule
 {
     public required Type TargetEntityType { get; init; }

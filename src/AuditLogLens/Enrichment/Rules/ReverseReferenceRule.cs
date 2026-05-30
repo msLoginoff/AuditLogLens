@@ -4,6 +4,14 @@ using AuditLogLens.Enrichment.Internal.Loading;
 
 namespace AuditLogLens.Enrichment.Rules;
 
+/// <summary>
+/// Loads entities that point back to the audited source and lets a mapper write
+/// derived audit values.
+/// </summary>
+/// <remarks>
+/// Use this rule when the audited entity does not store the values to display, but
+/// related rows can be found by a foreign key that points to the audited entity.
+/// </remarks>
 public sealed class ReverseReferenceRule : EnrichmentRule
 {
     public required Type TargetEntityType { get; init; }
