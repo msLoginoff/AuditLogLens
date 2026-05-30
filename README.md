@@ -61,7 +61,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 }
 ```
 
-The default entity is [`AuditLogLensEntry`](src/AuditLogLens/AuditLogLensEntry.cs). It stores:
+The default entity is [`AuditLogLensEntry`](src/AuditLogLens/Writing/AuditLogLensEntry.cs). It stores:
 
 - `Id`
 - `CreatedAtUtc`

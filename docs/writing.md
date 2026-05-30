@@ -2,7 +2,7 @@
 
 AuditLogLens does not force one audit table shape.
 
-The library creates `AuditChange` objects. By default, it maps them to the built-in [`AuditLogLensEntry`](../src/AuditLogLens/AuditLogLensEntry.cs) entity.
+The library creates `AuditChange` objects. By default, it maps them to the built-in [`AuditLogLensEntry`](../src/AuditLogLens/Writing/AuditLogLensEntry.cs) entity.
 
 ## Default AuditLogLensEntry
 

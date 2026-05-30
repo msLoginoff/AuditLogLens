@@ -35,7 +35,7 @@ No `DbContext.SaveChanges` override is required for the basic setup.
 
 ## 3. Add the Default Audit Entity to Your Model
 
-Add the built-in [`AuditLogLensEntry`](../src/AuditLogLens/AuditLogLensEntry.cs) entity in `OnModelCreating`:
+Add the built-in [`AuditLogLensEntry`](../src/AuditLogLens/Writing/AuditLogLensEntry.cs) entity in `OnModelCreating`:
 
 ```csharp
 protected override void OnModelCreating(ModelBuilder modelBuilder)
