@@ -99,7 +99,7 @@ public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
         {
             TableName = change.TableName,
             EntityId = change.EntityId?.ToString(),
-            State = change.State,
+            State = change.State.ToString(),
             OldValuesJson = JsonSerializer.Serialize(change.OldValues),
             NewValuesJson = JsonSerializer.Serialize(change.NewValues)
         };

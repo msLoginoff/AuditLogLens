@@ -65,7 +65,7 @@ public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
         {
             TableName = change.TableName,
             EntityId = change.EntityId?.ToString(),
-            State = change.State,
+            State = change.State.ToString(),
             OldValuesJson = JsonSerializer.Serialize(change.OldValues),
             NewValuesJson = JsonSerializer.Serialize(change.NewValues)
         };
@@ -80,8 +80,10 @@ The default EF writer:
 - skips changes that still have no `OldValues` and no `NewValues`;
 - maps each `AuditChange`;
 - adds mapped entries to the current `DbContext`;
-- calls `SaveChanges`;
-- suppresses recursive audit logging for the audit save itself.
+- calls `SaveChanges` only when the pipeline is invoked with `AuditSaveBehavior.SaveImmediately`;
+- suppresses recursive audit logging for audit-owned saves.
+
+The EF interceptor uses immediate saving after the main save succeeds. Manual pipeline calls default to `AuditSaveBehavior.AddToCurrentContext`, which only adds audit entries to the current `DbContext`; the caller's later `SaveChanges` commits them.
 
 `ExtraValues` alone do not create an audit record. They are metadata for a record that already has old or new values.
 
@@ -116,7 +118,7 @@ public AuditRecord? Map(AuditChange change, DbContext dbContext)
         TenantId = tenantId,
         UserId = userId,
         TableName = change.TableName,
-        State = change.State
+        State = change.State.ToString()
     };
 }
 ```

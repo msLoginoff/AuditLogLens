@@ -8,6 +8,7 @@ Use the topic pages for deeper explanations:
 - [Enrichment](enrichment.md)
 - [Restrictions](restrictions.md)
 - [Writing Audit Records](writing.md)
+- [Manual Audit](manual-audit.md)
 - [Transactions](transactions.md)
 
 ## Use the Default Audit Table
@@ -90,7 +91,7 @@ public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
         return new AuditRecord
         {
             TableName = change.TableName,
-            State = change.State,
+            State = change.State.ToString(),
             OldValuesJson = JsonSerializer.Serialize(change.OldValues),
             NewValuesJson = JsonSerializer.Serialize(change.NewValues)
         };
@@ -204,6 +205,51 @@ Read `ExtraValues` in a custom mapper:
 ```csharp
 change.TryGetExtraValue<string>("UserId", out var userId);
 ```
+
+## Write a Manual Audit Event
+
+Use manual audit for application events that are not represented by EF entity changes.
+
+```csharp
+public sealed class ExportAuditService
+{
+    private readonly AppDbContext _db;
+    private readonly IAuditChangeFactory _changeFactory;
+    private readonly IAuditPipeline _pipeline;
+
+    public ExportAuditService(
+        AppDbContext db,
+        IAuditChangeFactory changeFactory,
+        IAuditPipeline pipeline)
+    {
+        _db = db;
+        _changeFactory = changeFactory;
+        _pipeline = pipeline;
+    }
+
+    public Task LogExportAsync(int patientId, CancellationToken cancellationToken)
+    {
+        var change = _changeFactory.CreateManual(
+            tableName: "PatientExport",
+            rowKey: patientId,
+            state: AuditChangeState.Added,
+            newValues: new Dictionary<string, object?>
+            {
+                ["Exported"] = true
+            },
+            extraValues: new Dictionary<string, object?>
+            {
+                ["PatientId"] = patientId
+            });
+
+        return _pipeline.ProcessAsync(_db, [change], cancellationToken: cancellationToken);
+    }
+}
+```
+
+By default, the manual pipeline adds the audit entry to the current `DbContext` and does not call `SaveChanges`.
+
+Read [Manual Audit](manual-audit.md) for save behavior, restrictions, and enrichment details.
 
 ## Enable Transactional Audit Writes
 

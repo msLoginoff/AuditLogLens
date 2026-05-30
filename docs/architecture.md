@@ -9,8 +9,11 @@ Detect -> Enrich -> Map -> Write
 ```mermaid
 flowchart LR
     SaveChanges["DbContext.SaveChanges"] --> Interceptor["AuditSaveChangesInterceptor"]
+    Manual["Application manual event"] --> Factory["IAuditChangeFactory"]
+    Factory --> Pipeline["IAuditPipeline"]
     Interceptor --> Detect["Detect changes"]
-    Detect --> Enrich["Enrich changes"]
+    Detect --> Pipeline
+    Pipeline --> Enrich["Enrich changes"]
     Enrich --> Map["Map to audit entity"]
     Map --> Write["Write audit records"]
 ```
@@ -30,8 +33,22 @@ It creates `AuditChange` objects with:
 
 For added entities with generated keys, the real key is filled after the main save.
 
-In the current public API, EF Core detection is the only built-in source of `AuditChange`.
-Manual/event audit triggers are a planned extension point, but they are not exposed yet.
+Automatic EF detection is one source of `AuditChange`.
+
+Manual application events can also create changes explicitly with `IAuditChangeFactory`.
+The factory does not inspect DTOs, calculate diffs, serialize payloads, or apply restrictions. It accepts the values the application has already decided to audit.
+
+## Pipeline
+
+`IAuditPipeline` is the shared source-agnostic stage.
+
+It receives already-created `AuditChange` instances, then:
+
+- enriches them;
+- maps them;
+- writes audit records according to the requested save behavior.
+
+The pipeline does not call `ChangeTracker.DetectChanges()` and does not enumerate tracked entries. EF-specific snapshots are passed internally by the interceptor path when collection enrichment needs them.
 
 ## Enrich
 
@@ -87,8 +104,12 @@ It:
 - skips changes that still have no old/new values;
 - maps audit changes;
 - adds audit entities to the current `DbContext`;
-- calls `SaveChanges`;
-- suppresses recursive audit logging during the audit save.
+- optionally calls `SaveChanges`;
+- suppresses recursive audit logging during audit-owned saves.
+
+Automatic interceptor writes use immediate saving after the main save succeeds.
+
+Manual pipeline calls default to adding audit entries to the current context without saving. A caller can opt into immediate saving with `AuditSaveBehavior.SaveImmediately`.
 
 ## Public API Shape
 
@@ -96,8 +117,13 @@ The public API is intentionally centered on the types users write directly:
 
 - `AuditExtensions`
 - `AuditOptions`
+- `AuditPipelineSettings`
+- `AuditSaveBehavior`
 - `AuditWriteMode`
 - `AuditChange`
+- `AuditChangeState`
+- `IAuditChangeFactory`
+- `IAuditPipeline`
 - `AuditLogLensEntry`
 - `UseAuditLogLens()`
 - `IAuditEntryMapper<TAuditEntry>`
@@ -109,9 +135,7 @@ The public API is intentionally centered on the types users write directly:
 - `AuditEnrichmentContext`
 - `AuditEnrichmentBag`
 
-Runtime pipeline types are internal.
-
-This means application code should not call the enrichment facade or writer directly. If manual audit sources are added later, they should go through a deliberate public pipeline API rather than depending on internal runtime classes.
+The enrichment facade and writer remain internal. Application code that needs manual audit sources should use `IAuditChangeFactory` and `IAuditPipeline` rather than depending on internal runtime classes.
 
 ## Related Pages
 

@@ -224,7 +224,7 @@ protected override Task BeforeMergeAsync(
 {
     var deletedUserIds = context.Changes
         .Where(change => change.EntityType == typeof(User)
-                         && change.State == nameof(EntityState.Deleted))
+                         && change.State == AuditChangeState.Deleted)
         .Select(change => (string)change.EntityId!)
         .ToHashSet();
 
@@ -235,6 +235,15 @@ protected override Task BeforeMergeAsync(
     }
 
     return Task.CompletedTask;
+}
+```
+
+When an enricher writes metadata into `ExtraValues`, prefer treating existing values as explicit caller input. This matters for manual audit events, where the application may already know `TenantId`, `PatientId`, or another application-specific column even when there is no EF entity instance to inspect.
+
+```csharp
+if (!change.ExtraValues.ContainsKey("PatientId"))
+{
+    bag.SetExtraValue("PatientId", ResolvePatientId(change.Entity));
 }
 ```
 

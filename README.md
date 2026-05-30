@@ -8,23 +8,21 @@
 AuditLogLens helps EF Core applications write audit logs that people can actually read.
 
 Raw ChangeTracker data is often full of ids, technical fields, and noisy changes. AuditLogLens captures those changes automatically, keeps auditing opt-in through explicit rules, and gives you a structured enrichment pipeline to turn raw values into meaningful audit records. It batches related data before enrichment runs, so readable logs do not require a pile of per-row lookup queries.
-It watches `SaveChanges`, creates `AuditChange` objects, enriches them with readable data, maps them to an audit entity, and writes audit records through EF Core.
+It watches `SaveChanges`, creates `AuditChange` objects, enriches them with readable data, maps them to an audit entity, and writes audit records through EF Core. Applications can also create manual `AuditChange` objects and send them through the same enrichment and writing pipeline.
 
 The main idea is simple:
 
 ```text
-EF Core changes -> AuditChange -> enrichment -> mapper -> audit table
+EF Core changes or manual events -> AuditChange -> enrichment -> mapper -> audit table
 ```
-
-The current public pipeline starts from EF Core `SaveChanges`. Manual/event audit sources are not exposed as a public API yet.
 
 ## Installation
 
 ```bash
-dotnet add package AuditLogLens --version 0.1.0-alpha.1
+dotnet add package AuditLogLens --version 0.1.0-alpha.2
 ```
 
-`0.1.0-alpha.1` is the first public alpha. The API is usable, but still being shaped before a stable `1.0` release.
+`0.1.0-alpha.2` is an alpha release. The API is usable, but still being shaped before a stable `1.0` release.
 
 ## Quick Start
 
@@ -89,7 +87,7 @@ public sealed class AuditRecordMapper : IAuditEntryMapper<AuditRecord>
         {
             TableName = change.TableName,
             EntityId = change.EntityId?.ToString(),
-            State = change.State,
+            State = change.State.ToString(),
             OldValues = JsonSerializer.Serialize(change.OldValues),
             NewValues = JsonSerializer.Serialize(change.NewValues)
         };
@@ -185,6 +183,7 @@ Start here:
 - [Changelog](CHANGELOG.md)
 - [Recipes](docs/recipes.md)
 - [Enrichment](docs/enrichment.md)
+- [Manual Audit](docs/manual-audit.md)
 - [Restrictions](docs/restrictions.md)
 - [Writing Audit Records](docs/writing.md)
 - [Transactions](docs/transactions.md)
@@ -194,6 +193,8 @@ Start here:
 ## Main Concepts
 
 - `AuditChange` is the library-level representation of one audited change.
+- `IAuditChangeFactory` creates explicit manual audit changes.
+- `IAuditPipeline` runs enrichment and writing for already-created changes.
 - `AuditLogLensEntry` is the built-in audit entity for fast setup.
 - `IAuditEntryMapper<TAuditEntry>` maps `AuditChange` to your custom audit entity.
 - `AuditRestrictionsBase` controls which entities and properties are audited.
@@ -218,12 +219,9 @@ The current package has:
 - Declarative enrichment with batched reference loading.
 - Collection enrichment for explicit join entities.
 - Custom application enrichers.
+- Public manual audit pipeline for application-created events.
 - Default EF writer with recursion suppression.
 - Optional transactional audit writing.
-
-Not supported yet:
-
-- Public manual/event audit source API. Today the built-in pipeline is designed around EF Core detection. A future version may allow an application trigger to create `AuditChange` objects and send them through the same enrichment and writing pipeline.
 
 ## License
 

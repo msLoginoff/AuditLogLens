@@ -44,7 +44,7 @@ You can choose the mode per save operation:
 services.AddAuditInfrastructure(options =>
 {
     options.WriteModeSelector = (dbContext, saveContext) =>
-        saveContext.PreSaveChanges.Any(change => change.State == nameof(EntityState.Deleted))
+        saveContext.PreSaveChanges.Any(change => change.State == AuditChangeState.Deleted)
             ? AuditWriteMode.Transactional
             : AuditWriteMode.NonTransactional;
 });

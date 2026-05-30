@@ -11,6 +11,8 @@ The format is intentionally small and follows the project version published to N
 - SourceLink metadata for GitHub source debugging.
 - NuGet symbol package generation (`.snupkg`).
 - Public repository files: changelog, security policy, contributing guide, and code of conduct.
+- Public manual audit pipeline through `IAuditChangeFactory` and `IAuditPipeline`.
+- Explicit manual audit save behavior with `AuditSaveBehavior`.
 
 ## 0.1.0-alpha.1 - 2026-05-22
 
