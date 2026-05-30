@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
 
         <PackageId>AuditLogLens</PackageId>
-        <Version>0.1.0-alpha.2</Version>
+        <Version>0.2.0-alpha.1</Version>
         <Authors>Max Loginov</Authors>
         <Company>Max Loginov</Company>
         <Description>EF Core audit pipeline with declarative enrichment and batched readable lookup loading.</Description>
@@ -34,6 +34,10 @@
 
     <ItemGroup>
         <None Include="../../README.md" Pack="true" PackagePath="/"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Settings\" />
     </ItemGroup>
 
 </Project>

@@ -19,10 +19,10 @@ EF Core changes or manual events -> AuditChange -> enrichment -> mapper -> audit
 ## Installation
 
 ```bash
-dotnet add package AuditLogLens --version 0.1.0-alpha.2
+dotnet add package AuditLogLens --version 0.2.0-alpha.1
 ```
 
-`0.1.0-alpha.2` is an alpha release. The API is usable, but still being shaped before a stable `1.0` release.
+`0.2.0-alpha.1` is an alpha release. The API is usable, but still being shaped before a stable `1.0` release.
 
 ## Quick Start
 
