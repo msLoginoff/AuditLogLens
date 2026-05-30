@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Enrichment.Context;
 
+/// <summary>
+/// Provides the data available to application enrichers during one audit pipeline run.
+/// </summary>
 public sealed class AuditEnrichmentContext
 {
     private readonly Dictionary<AuditChange, AuditEnrichmentBag> _bags = new();
@@ -12,8 +15,14 @@ public sealed class AuditEnrichmentContext
     private readonly IReadOnlyList<AuditTrackedEntry> _trackedEntries;
     private readonly Dictionary<Type, IReadOnlyList<AuditTrackedEntry>> _trackedEntriesByEntityType = new();
 
+    /// <summary>
+    /// Gets all audit changes being enriched in this pipeline run.
+    /// </summary>
     public IReadOnlyList<AuditChange> Changes { get; }
 
+    /// <summary>
+    /// Gets the EF Core context used for enrichment lookups.
+    /// </summary>
     public DbContext DbContext { get; }
 
     internal IReadOnlyList<Type> EntityTypes => _changesByEntityType.Keys.ToList();
@@ -40,6 +49,9 @@ public sealed class AuditEnrichmentContext
         }
     }
 
+    /// <summary>
+    /// Gets changes whose <see cref="AuditChange.EntityType"/> matches the specified type.
+    /// </summary>
     public IReadOnlyList<AuditChange> GetChangesOf(Type entityType)
     {
         ArgumentNullException.ThrowIfNull(entityType);
@@ -48,12 +60,18 @@ public sealed class AuditEnrichmentContext
             : [];
     }
 
+    /// <summary>
+    /// Gets the enrichment bag associated with a change.
+    /// </summary>
     public AuditEnrichmentBag GetBagFor(AuditChange change)
     {
         ArgumentNullException.ThrowIfNull(change);
         return _bags[change];
     }
 
+    /// <summary>
+    /// Gets entities loaded by enrichment rules for the specified type and key property.
+    /// </summary>
     public IReadOnlyList<object> GetLoadedEntitiesOf(Type entityType, string propertyName)
     {
         ArgumentNullException.ThrowIfNull(entityType);
@@ -64,6 +82,9 @@ public sealed class AuditEnrichmentContext
             : Array.Empty<object>();
     }
 
+    /// <summary>
+    /// Gets loaded entities of the specified type for the specified key property.
+    /// </summary>
     public IReadOnlyList<T> GetLoaded<T>(string propertyName) where T : class
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);

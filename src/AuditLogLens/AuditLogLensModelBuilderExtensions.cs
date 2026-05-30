@@ -3,8 +3,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens;
 
+/// <summary>
+/// Provides EF Core model configuration helpers for the default AuditLogLens model.
+/// </summary>
 public static class AuditLogLensModelBuilderExtensions
 {
+    /// <summary>
+    /// Adds the default <see cref="AuditLogLensEntry"/> entity to the EF Core model.
+    /// </summary>
+    /// <param name="modelBuilder">The model builder to configure.</param>
+    /// <param name="tableName">The table name used for audit entries.</param>
+    /// <param name="schema">The optional database schema used for audit entries.</param>
     public static ModelBuilder UseAuditLogLens(
         this ModelBuilder modelBuilder,
         string tableName = AuditLogLensEntry.DefaultTableName,

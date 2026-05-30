@@ -17,13 +17,24 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AuditLogLens;
 
+/// <summary>
+/// Provides service registration and EF Core setup helpers for AuditLogLens.
+/// </summary>
 public static class AuditExtensions
 {
+    /// <summary>
+    /// Adds AuditLogLens services with default options.
+    /// </summary>
     public static IServiceCollection AddAuditInfrastructure(this IServiceCollection services)
     {
         return services.AddAuditInfrastructure(_ => { });
     }
 
+    /// <summary>
+    /// Adds AuditLogLens services and configures audit options.
+    /// </summary>
+    /// <param name="services">The service collection to add services to.</param>
+    /// <param name="configure">The delegate used to configure audit options.</param>
     public static IServiceCollection AddAuditInfrastructure(
         this IServiceCollection services,
         Action<AuditOptions> configure)
@@ -49,6 +60,11 @@ public static class AuditExtensions
         return services;
     }
 
+    /// <summary>
+    /// Adds the AuditLogLens SaveChanges interceptor to a DbContext options builder.
+    /// </summary>
+    /// <param name="builder">The DbContext options builder.</param>
+    /// <param name="provider">The service provider used to resolve the interceptor.</param>
     public static DbContextOptionsBuilder AddAuditInterceptor(
         this DbContextOptionsBuilder builder,
         IServiceProvider provider)
@@ -57,6 +73,11 @@ public static class AuditExtensions
             provider.GetRequiredService<AuditSaveChangesInterceptor>());
     }
 
+    /// <summary>
+    /// Registers an EF Core audit writer that stores records as the specified audit entity type.
+    /// </summary>
+    /// <typeparam name="TAuditEntry">The EF entity type used to store audit records.</typeparam>
+    /// <typeparam name="TAuditEntryMapper">The mapper that creates audit entries.</typeparam>
     public static IServiceCollection AddEfAuditWriter<TAuditEntry, TAuditEntryMapper>(
         this IServiceCollection services)
         where TAuditEntry : class
@@ -68,6 +89,10 @@ public static class AuditExtensions
         return services;
     }
 
+    /// <summary>
+    /// Replaces the default audit restrictions with an application-defined restrictions type.
+    /// </summary>
+    /// <typeparam name="TAuditRestrictions">The restrictions type to use.</typeparam>
     public static IServiceCollection AddAuditRestrictions<TAuditRestrictions>(
         this IServiceCollection services)
         where TAuditRestrictions : AuditRestrictionsBase
@@ -77,6 +102,10 @@ public static class AuditExtensions
         return services;
     }
 
+    /// <summary>
+    /// Adds an application enricher to the audit enrichment pipeline.
+    /// </summary>
+    /// <typeparam name="TEnricher">The enricher type to add.</typeparam>
     public static IServiceCollection AddAuditEnricher<TEnricher>(
         this IServiceCollection services)
         where TEnricher : AuditEntityEnricherBase
