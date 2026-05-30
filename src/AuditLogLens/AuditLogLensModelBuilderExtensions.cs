@@ -1,3 +1,4 @@
+using AuditLogLens.Writing;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens;

@@ -1,11 +1,15 @@
+using AuditLogLens.Configuration;
 using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Interceptors;
-using AuditLogLens.Internal;
+using AuditLogLens.Manual;
+using AuditLogLens.Pipeline;
+using AuditLogLens.Pipeline.Internal;
 using AuditLogLens.Restrictions;
 using AuditLogLens.Restrictions.Internal;
+using AuditLogLens.Writing;
 using AuditLogLens.Writing.Internal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

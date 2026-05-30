@@ -1,3 +1,4 @@
+using AuditLogLens.Changes;
 using AuditLogLens.Enrichment.Context;
 using AuditLogLens.Tests.TestObjects;
 using Microsoft.EntityFrameworkCore;

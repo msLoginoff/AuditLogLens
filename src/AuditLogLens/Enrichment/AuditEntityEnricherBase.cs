@@ -1,4 +1,4 @@
-using AuditLogLens;
+using AuditLogLens.Changes;
 using AuditLogLens.Enrichment.Context;
 
 namespace AuditLogLens.Enrichment;

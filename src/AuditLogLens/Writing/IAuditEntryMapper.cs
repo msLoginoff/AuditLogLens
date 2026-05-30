@@ -1,8 +1,9 @@
+using AuditLogLens.Changes;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLogLens;
+namespace AuditLogLens.Writing;
 
-public interface IAuditEntryMapper<TAuditEntry>
+public interface IAuditEntryMapper<out TAuditEntry>
     where TAuditEntry : class
 {
     bool CanMap(DbContext dbContext);

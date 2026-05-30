@@ -1,3 +1,4 @@
+using AuditLogLens.Changes;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Tests.TestObjects;

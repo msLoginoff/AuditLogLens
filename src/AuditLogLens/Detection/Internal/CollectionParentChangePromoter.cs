@@ -1,3 +1,4 @@
+using AuditLogLens.Changes;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Enrichment.Rules;
 using Microsoft.EntityFrameworkCore;

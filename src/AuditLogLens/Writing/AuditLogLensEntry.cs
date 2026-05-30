@@ -1,4 +1,4 @@
-namespace AuditLogLens;
+namespace AuditLogLens.Writing;
 
 public sealed class AuditLogLensEntry
 {

@@ -1,4 +1,4 @@
-namespace AuditLogLens;
+namespace AuditLogLens.Changes;
 
 /// <summary>
 /// Describes the logical state of an audit change.

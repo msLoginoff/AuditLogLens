@@ -1,4 +1,4 @@
-namespace AuditLogLens;
+namespace AuditLogLens.Configuration;
 
 public enum AuditWriteMode
 {

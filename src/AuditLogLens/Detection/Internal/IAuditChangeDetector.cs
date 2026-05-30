@@ -1,3 +1,4 @@
+using AuditLogLens.Changes;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Detection.Internal;

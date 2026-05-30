@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
-namespace AuditLogLens;
+namespace AuditLogLens.Changes;
 
 public sealed class AuditChange
 {

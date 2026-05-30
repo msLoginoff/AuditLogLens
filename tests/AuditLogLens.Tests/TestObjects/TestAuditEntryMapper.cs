@@ -1,3 +1,5 @@
+using AuditLogLens.Changes;
+using AuditLogLens.Writing;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Tests.TestObjects;

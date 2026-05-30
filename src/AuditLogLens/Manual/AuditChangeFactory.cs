@@ -1,4 +1,6 @@
-namespace AuditLogLens;
+using AuditLogLens.Changes;
+
+namespace AuditLogLens.Manual;
 
 /// <summary>
 /// Default implementation of <see cref="IAuditChangeFactory"/>.

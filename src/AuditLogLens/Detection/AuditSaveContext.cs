@@ -1,3 +1,5 @@
+using AuditLogLens.Changes;
+using AuditLogLens.Configuration;
 using AuditLogLens.Detection.Internal;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage;

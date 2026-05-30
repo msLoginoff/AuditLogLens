@@ -1,9 +1,10 @@
+using AuditLogLens.Changes;
 using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Writing.Internal;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLogLens.Internal;
+namespace AuditLogLens.Pipeline.Internal;
 
 internal sealed class AuditPipeline : IAuditPipeline
 {

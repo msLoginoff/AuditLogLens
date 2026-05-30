@@ -1,6 +1,7 @@
+using AuditLogLens.Changes;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLogLens;
+namespace AuditLogLens.Pipeline;
 
 /// <summary>
 /// Runs the source-agnostic audit processing stage for already detected or

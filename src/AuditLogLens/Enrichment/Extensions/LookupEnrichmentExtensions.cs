@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using AuditLogLens.Changes;
 using AuditLogLens.Enrichment.Internal.Planning;
 using AuditLogLens.Enrichment.Options;
 using AuditLogLens.Enrichment.Rules;

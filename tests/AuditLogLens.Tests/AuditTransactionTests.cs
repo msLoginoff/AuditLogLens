@@ -1,4 +1,7 @@
+using AuditLogLens.Changes;
+using AuditLogLens.Configuration;
 using AuditLogLens.Tests.TestObjects;
+using AuditLogLens.Writing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

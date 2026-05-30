@@ -1,7 +1,7 @@
 using AuditLogLens.Detection;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuditLogLens;
+namespace AuditLogLens.Configuration;
 
 public sealed class AuditOptions
 {

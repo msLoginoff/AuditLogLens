@@ -1,4 +1,4 @@
-namespace AuditLogLens;
+namespace AuditLogLens.Pipeline;
 
 /// <summary>
 /// Controls whether the audit writer only attaches audit entries to the current

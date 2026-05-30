@@ -1,3 +1,4 @@
+using AuditLogLens.Changes;
 using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment.Internal;
 using AuditLogLens.Enrichment.Internal.Planning;

@@ -1,6 +1,6 @@
 using AuditLogLens.Detection.Internal;
 
-namespace AuditLogLens;
+namespace AuditLogLens.Pipeline;
 
 /// <summary>
 /// Per-call settings for <see cref="IAuditPipeline.ProcessAsync"/>.

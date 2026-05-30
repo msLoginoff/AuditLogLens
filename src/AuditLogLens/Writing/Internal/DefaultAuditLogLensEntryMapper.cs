@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AuditLogLens.Changes;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Writing.Internal;

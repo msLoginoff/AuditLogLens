@@ -1,7 +1,9 @@
 using System.Runtime.CompilerServices;
 using System.Transactions;
+using AuditLogLens.Configuration;
 using AuditLogLens.Detection;
 using AuditLogLens.Detection.Internal;
+using AuditLogLens.Pipeline;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 

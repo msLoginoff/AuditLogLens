@@ -1,3 +1,6 @@
+using AuditLogLens.Changes;
+using AuditLogLens.Manual;
+using AuditLogLens.Pipeline;
 using AuditLogLens.Tests.TestObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

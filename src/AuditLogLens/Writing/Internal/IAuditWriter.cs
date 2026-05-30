@@ -1,3 +1,5 @@
+using AuditLogLens.Changes;
+using AuditLogLens.Pipeline;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuditLogLens.Writing.Internal;

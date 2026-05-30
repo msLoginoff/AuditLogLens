@@ -1,4 +1,6 @@
-namespace AuditLogLens;
+using AuditLogLens.Changes;
+
+namespace AuditLogLens.Manual;
 
 /// <summary>
 /// Creates <see cref="AuditChange"/> instances for audit events that do not

@@ -1,4 +1,5 @@
 using System.Data.Common;
+using AuditLogLens.Changes;
 using AuditLogLens.Detection.Internal;
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Context;
