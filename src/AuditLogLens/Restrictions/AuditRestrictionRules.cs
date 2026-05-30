@@ -2,16 +2,25 @@ using System.Collections.Frozen;
 
 namespace AuditLogLens.Restrictions;
 
+/// <summary>
+/// Collects audit restriction rules while an <see cref="AuditRestrictionsBase"/> is configured.
+/// </summary>
 public sealed class AuditRestrictionRules
 {
     private readonly Dictionary<string, HashSet<string>> _rules = new(StringComparer.Ordinal);
     private bool _isBuilt;
 
+    /// <summary>
+    /// Marks an entity type as auditable and returns a builder for ignored properties.
+    /// </summary>
     public AuditRestrictionRuleBuilder<TEntity> For<TEntity>()
     {
         return new AuditRestrictionRuleBuilder<TEntity>(GetOrAddRule(typeof(TEntity).Name));
     }
 
+    /// <summary>
+    /// Marks a table name as auditable and returns a builder for ignored properties.
+    /// </summary>
     public AuditRestrictionRuleBuilder For(string tableName)
     {
         return new AuditRestrictionRuleBuilder(GetOrAddRule(tableName));

@@ -6,8 +6,19 @@ using AuditLogLens.Enrichment.Rules;
 
 namespace AuditLogLens.Enrichment.Extensions;
 
+/// <summary>
+/// Provides fluent methods for adding reference lookups to an audit enrichment plan.
+/// </summary>
 public static class ReferenceEnrichmentExtensions
 {
+    /// <summary>
+    /// Adds a reference lookup that reads a foreign key from the audited value and writes
+    /// a readable value from the referenced entity.
+    /// </summary>
+    /// <remarks>
+    /// The target entity is loaded by its public <c>Id</c> property. Use the overload with
+    /// an explicit target key when the target key has a different name.
+    /// </remarks>
     public static IAuditEnrichmentPlanBuilder Reference<TSource, TTarget, TKey>(
         this IAuditEnrichmentPlanBuilder builder,
         Expression<Func<TSource, TKey>> foreignKeyProperty,
@@ -21,6 +32,14 @@ public static class ReferenceEnrichmentExtensions
             configure: null);
     }
 
+    /// <summary>
+    /// Adds a reference lookup and allows related data to be included when the target
+    /// entity is loaded.
+    /// </summary>
+    /// <remarks>
+    /// Include paths from all matching rules are merged and loaded in batches for the
+    /// whole audit operation.
+    /// </remarks>
     public static IAuditEnrichmentPlanBuilder Reference<TSource, TTarget, TKey>(
         this IAuditEnrichmentPlanBuilder builder,
         Expression<Func<TSource, TKey>> foreignKeyProperty,
@@ -46,6 +65,13 @@ public static class ReferenceEnrichmentExtensions
         });
     }
 
+    /// <summary>
+    /// Adds a reference lookup with an explicit target key property.
+    /// </summary>
+    /// <remarks>
+    /// Use this overload when the referenced entity is not keyed by a public <c>Id</c>
+    /// property, or when a different lookup property should be used.
+    /// </remarks>
     public static IAuditEnrichmentPlanBuilder Reference<TSource, TTarget, TKey>(
         this IAuditEnrichmentPlanBuilder builder,
         Expression<Func<TSource, TKey>> foreignKeyProperty,
@@ -61,6 +87,12 @@ public static class ReferenceEnrichmentExtensions
             configure: null);
     }
 
+    /// <summary>
+    /// Adds a reference lookup with an explicit target key property and optional include paths.
+    /// </summary>
+    /// <remarks>
+    /// The referenced values are loaded in batches before enrichers write to the audit bag.
+    /// </remarks>
     public static IAuditEnrichmentPlanBuilder Reference<TSource, TTarget, TKey>(
         this IAuditEnrichmentPlanBuilder builder,
         Expression<Func<TSource, TKey>> foreignKeyProperty,

@@ -6,16 +6,20 @@ using AuditLogLens.Enrichment.Rules;
 
 namespace AuditLogLens.Enrichment.Extensions;
 
+/// <summary>
+/// Provides preload-only lookup rules for custom enrichers.
+/// </summary>
 public static class LookupEnrichmentExtensions
 {
     /// <summary>
-    /// Declares a preload-only batched lookup. The library collects keys from
-    /// all changes using <paramref name="keysSelector"/>, runs a single
-    /// <c>WHERE propertyName IN (...)</c> load (with optional <c>Include</c> paths
-    /// merged with other rules for the same target + property), and stores the
-    /// loaded entities in <see cref="Context.AuditEnrichmentContext"/>. The
-    /// enricher consumes them via <c>context.GetLoaded&lt;TTarget&gt;(propertyName)</c>.
+    /// Declares a batched lookup that preloads entities for a custom enricher.
     /// </summary>
+    /// <remarks>
+    /// The library collects keys from all changes with <paramref name="keysSelector"/>,
+    /// loads matching entities once, and stores them in
+    /// <see cref="Context.AuditEnrichmentContext"/>. The rule does not write audit fields
+    /// by itself; the enricher reads the loaded values from the context.
+    /// </remarks>
     public static IAuditEnrichmentPlanBuilder Lookup<TTarget>(
         this IAuditEnrichmentPlanBuilder builder,
         string propertyName,
@@ -38,9 +42,12 @@ public static class LookupEnrichmentExtensions
     }
 
     /// <summary>
-    /// Same as <see cref="Lookup{TTarget}(IAuditEnrichmentPlanBuilder,string,Func{AuditChange,IEnumerable{object?}},Action{AuditLookupOptions{TTarget}})"/>
-    /// but accepts a typed property expression for rename-safety.
+    /// Declares a batched lookup using a typed target property expression.
     /// </summary>
+    /// <remarks>
+    /// This overload is equivalent to the string-based overload, but keeps the lookup
+    /// property rename-safe.
+    /// </remarks>
     public static IAuditEnrichmentPlanBuilder Lookup<TTarget, TKey>(
         this IAuditEnrichmentPlanBuilder builder,
         Expression<Func<TTarget, TKey>> targetProperty,

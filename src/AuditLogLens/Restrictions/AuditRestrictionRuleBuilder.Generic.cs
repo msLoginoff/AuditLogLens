@@ -3,6 +3,10 @@ using System.Reflection;
 
 namespace AuditLogLens.Restrictions;
 
+/// <summary>
+/// Builds property restrictions for an auditable entity type.
+/// </summary>
+/// <typeparam name="TEntity">The entity type being configured.</typeparam>
 public sealed class AuditRestrictionRuleBuilder<TEntity>
 {
     private readonly HashSet<string> _forbiddenProperties;
@@ -12,6 +16,9 @@ public sealed class AuditRestrictionRuleBuilder<TEntity>
         _forbiddenProperties = forbiddenProperties;
     }
 
+    /// <summary>
+    /// Excludes properties by name from audit values for the configured entity type.
+    /// </summary>
     public AuditRestrictionRuleBuilder<TEntity> Ignore(params string[] propertyNames)
     {
         ArgumentNullException.ThrowIfNull(propertyNames);
@@ -25,6 +32,9 @@ public sealed class AuditRestrictionRuleBuilder<TEntity>
         return this;
     }
 
+    /// <summary>
+    /// Excludes a property from audit values for the configured entity type.
+    /// </summary>
     public AuditRestrictionRuleBuilder<TEntity> Ignore<TProperty>(
         Expression<Func<TEntity, TProperty>> property)
     {
