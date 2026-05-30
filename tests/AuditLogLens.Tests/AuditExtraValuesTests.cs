@@ -29,6 +29,21 @@ public class AuditExtraValuesTests
     }
 
     [Fact]
+    public void TrySetExtraValue_DoesNotOverwriteExistingValue()
+    {
+        var change = new AuditChange
+        {
+            EntityType = typeof(AllowedEntity),
+            State = AuditChangeState.Modified
+        };
+
+        Assert.True(change.TrySetExtraValue("PatientId", 42));
+        Assert.False(change.TrySetExtraValue("PatientId", 100));
+
+        Assert.Equal(42, change.ExtraValues["PatientId"]);
+    }
+
+    [Fact]
     public void MergeBagsToChanges_CopiesOldNewAndExtraValuesIntoAuditChange()
     {
         var change = new AuditChange
@@ -52,6 +67,40 @@ public class AuditExtraValuesTests
         Assert.Equal("New", change.NewValues["Name"]);
         Assert.Equal(42, change.ExtraValues["PatientId"]);
         Assert.False(bag.HasAnyValues());
+    }
+
+    [Fact]
+    public void MergeBagsToChanges_OverwritesExistingExtraValueWhenBagSetExtraValue()
+    {
+        var change = new AuditChange
+        {
+            EntityType = typeof(AllowedEntity),
+            State = AuditChangeState.Modified
+        };
+        change.SetExtraValue("PatientId", 42);
+
+        using var db = new AuditTestDbContext(
+            new DbContextOptionsBuilder<AuditTestDbContext>()
+                .Options);
+        var context = new AuditEnrichmentContext([change], db, []);
+
+        var bag = context.GetBagFor(change);
+        Assert.True(bag.TrySetExtraValue("PatientId", 100));
+
+        context.MergeBagsToChanges();
+
+        Assert.Equal(100, change.ExtraValues["PatientId"]);
+    }
+
+    [Fact]
+    public void BagTrySetExtraValue_DoesNotOverwriteAlreadyStagedValue()
+    {
+        var bag = new AuditEnrichmentBag();
+
+        Assert.True(bag.TrySetExtraValue("PatientId", 42));
+        Assert.False(bag.TrySetExtraValue("PatientId", 100));
+
+        Assert.Equal(42, bag.ExtraValues["PatientId"]);
     }
 
     [Fact]

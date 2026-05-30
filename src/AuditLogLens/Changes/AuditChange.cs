@@ -47,6 +47,12 @@ public sealed class AuditChange
         ExtraValues[key] = value;
     }
 
+    public bool TrySetExtraValue(string key, object? value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return ExtraValues.TryAdd(key, value);
+    }
+
     public bool TryGetExtraValue(string key, out object? value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);

@@ -30,6 +30,12 @@ public sealed class AuditEnrichmentBag
         _extraValues[key] = value;
     }
 
+    public bool TrySetExtraValue(string key, object? value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return _extraValues.TryAdd(key, value);
+    }
+
     public bool RemoveOld(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);

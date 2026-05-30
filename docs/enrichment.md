@@ -241,9 +241,11 @@ protected override Task BeforeMergeAsync(
 When an enricher writes metadata into `ExtraValues`, prefer treating existing values as explicit caller input. This matters for manual audit events, where the application may already know `TenantId`, `PatientId`, or another application-specific column even when there is no EF entity instance to inspect.
 
 ```csharp
-if (!change.ExtraValues.ContainsKey("PatientId"))
+var patientId = ResolvePatientId(change.Entity);
+if (patientId is not null
+    && !change.ExtraValues.ContainsKey("PatientId"))
 {
-    bag.SetExtraValue("PatientId", ResolvePatientId(change.Entity));
+    bag.SetExtraValue("PatientId", patientId);
 }
 ```
 

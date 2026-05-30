@@ -138,9 +138,11 @@ Use `ExtraValues` for metadata that belongs in audit table columns, not in the o
 Application enrichers should treat existing `ExtraValues` as explicit caller input. For example, if a manual event already supplies `SomeEntityId`, a metadata enricher should not overwrite it with `null` just because there is no EF entity to inspect.
 
 ```csharp
-if (!change.ExtraValues.ContainsKey("SomeEntityId"))
+var someEntityId = ResolveSomeEntityId(change.Entity);
+if (someEntityId is not null
+    && !change.ExtraValues.ContainsKey("SomeEntityId"))
 {
-    bag.SetExtraValue("SomeEntityId", ResolveSomeEntityId(change.Entity));
+    bag.SetExtraValue("SomeEntityId", someEntityId);
 }
 ```
 
