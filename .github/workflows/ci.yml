@@ -35,3 +35,6 @@ jobs:
 
       - name: Test
         run: dotnet tests/AuditLogLens.Tests/bin/Release/net10.0/AuditLogLens.Tests.dll
+
+      - name: Pack
+        run: dotnet pack src/AuditLogLens/AuditLogLens.csproj --configuration Release --no-restore -o artifacts/packages

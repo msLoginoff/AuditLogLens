@@ -154,7 +154,7 @@ Mapper recommendations:
 
 - use `change.TableName ?? change.EntityType.Name` for the table/event name;
 - use `change.EntityId` for the row key or event key;
-- map `change.State` as `AuditChangeState`;
+- map `change.State` to the shape your audit table expects, often with `change.State.ToString()`;
 - read metadata from `change.ExtraValues`;
 - do not require `change.Entry`.
 

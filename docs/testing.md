@@ -16,6 +16,14 @@ dotnet tests/AuditLogLens.Tests/bin/Debug/net10.0/AuditLogLens.Tests.dll
 
 In some restricted environments `dotnet test` can fail because the VSTest runner opens a local socket. The xUnit in-process runner avoids that issue.
 
+Before publishing a package, also run pack verification:
+
+```bash
+dotnet pack src/AuditLogLens/AuditLogLens.csproj --configuration Release --no-restore -o artifacts/packages
+```
+
+This command does not publish anything. It only verifies that the NuGet package can be built from the current source, including package metadata, README packaging, SourceLink, and symbol package settings.
+
 ## Current Coverage
 
 The test suite covers:
@@ -31,6 +39,12 @@ The test suite covers:
 - batched reference enrichment;
 - collection enrichment for explicit join entities;
 - application enricher template hooks;
+- manual audit factory behavior;
+- manual audit save behavior;
+- manual audit without EF restrictions;
+- manual reference enrichment from value dictionaries;
+- manual collection fallback without an EF `EntityEntry`;
+- the built-in `AuditLogLensEntry` writer path;
 - extra values;
 - transactional rollback on audit write failure;
 - parallel save operations with shared service provider.
@@ -64,5 +78,4 @@ Useful future tests:
 - reverse reference rules;
 - tracked-first enrichment lookup;
 - retry execution strategy behavior;
-- default `AuditLogLensEntry` JSON mapping;
 - bigger end-to-end scenarios with added, modified, deleted, enrichment, and writing together.

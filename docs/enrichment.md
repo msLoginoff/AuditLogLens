@@ -68,7 +68,7 @@ Use lookup enrichment when you want AuditLogLens to batch-load data, but you wan
 This is useful for complex payloads, JSON fields, or cases where one loaded entity can affect several audit fields.
 
 ```csharp
-using AuditLogLens;
+using AuditLogLens.Changes;
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Context;
 using AuditLogLens.Enrichment.Extensions;
@@ -193,7 +193,7 @@ AfterMergeAsync(context)
 Use per-change hooks for simple logic:
 
 ```csharp
-using AuditLogLens;
+using AuditLogLens.Changes;
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Context;
 

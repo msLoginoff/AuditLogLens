@@ -136,7 +136,7 @@ AuditLogLens batches reference loading across all changes before applying enrich
 Use `Lookup(...)` when the enricher needs loaded data, but the mapping logic is too custom for a simple `Reference(...)`.
 
 ```csharp
-using AuditLogLens;
+using AuditLogLens.Changes;
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Context;
 using AuditLogLens.Enrichment.Extensions;
@@ -173,7 +173,7 @@ public sealed class CustomValuesEnricher : AuditEntityEnricherBase
 Use an application enricher when data does not belong to one domain entity:
 
 ```csharp
-using AuditLogLens;
+using AuditLogLens.Changes;
 using AuditLogLens.Enrichment;
 using AuditLogLens.Enrichment.Context;
 
