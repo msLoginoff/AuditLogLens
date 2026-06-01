@@ -4,7 +4,7 @@ All notable changes to AuditLogLens will be documented in this file.
 
 The format is intentionally small and follows the project version published to NuGet.
 
-## 0.2.0-alpha.1 - Unreleased
+## 0.2.0-alpha.1 - 2026-06-01
 
 ### Added
 
